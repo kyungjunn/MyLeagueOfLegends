@@ -18,6 +18,70 @@ UStatComponent::UStatComponent()
 	StatDataTable = nullptr;
 }
 
+void UStatComponent::AddItemBonusStats(float InAD, float InAP, float InDefense, float InAPDefense, float InMaxHP, float InMaxMP, float InMoveSpeed, float InAttackRate)
+{
+	// 서버에서만 변경
+	if (!GetOwner() || !GetOwner()->HasAuthority())
+	{
+		return;
+	}
+
+	MaxHP += InMaxHP;
+	CurrentHP = FMath::Clamp(CurrentHP + InMaxHP, 0.0f, MaxHP); // 최대 체력이 늘어난 만큼 현재 체력도 증가
+
+	MaxMP += InMaxMP;
+	CurrentMP = FMath::Clamp(CurrentMP + InMaxMP, 0.0f, MaxMP);
+
+	AD += InAD;
+	AP += InAP;
+	Defense += InDefense;
+	APDefense += InAPDefense;
+	MoveSpeed += InMoveSpeed;
+	AttackRate += InAttackRate;
+
+	if (OnCurrentHPChanged.IsBound()) OnCurrentHPChanged.Broadcast(CurrentHP); 
+	if (OnMaxHPChanged.IsBound()) OnMaxHPChanged.Broadcast(MaxHP); 
+	if (OnCurrentMPChanged.IsBound()) OnCurrentMPChanged.Broadcast(CurrentMP); 
+	if (OnMaxMPChanged.IsBound()) OnMaxMPChanged.Broadcast(MaxMP); 
+	if (OnADChanged.IsBound()) OnADChanged.Broadcast(AD); 
+	if (OnAPChanged.IsBound()) OnAPChanged.Broadcast(AP); 
+	if (OnDefenseChanged.IsBound()) OnDefenseChanged.Broadcast(Defense); 
+	if (OnAPDefenseChanged.IsBound()) OnAPDefenseChanged.Broadcast(APDefense); 
+	if (OnMoveSpeedChanged.IsBound()) OnMoveSpeedChanged.Broadcast(MoveSpeed); 
+	if (OnAttackRateChanged.IsBound()) OnAttackRateChanged.Broadcast(AttackRate);
+}
+
+void UStatComponent::RemoveItemBonusStats(float InAD, float InAP, float InDefense, float InAPDefense, float InMaxHP, float InMaxMP, float InMoveSpeed, float InAttackRate)
+{
+	if (!GetOwner() || !GetOwner()->HasAuthority()) return;
+
+	// 아이템을 팔거나 해제했을 때는 반대로 차감
+	MaxHP = FMath::Max(0.0f, MaxHP - InMaxHP);
+	CurrentHP = FMath::Clamp(CurrentHP, 0.0f, MaxHP);
+
+	MaxMP = FMath::Max(0.0f, MaxMP - InMaxMP);
+	CurrentMP = FMath::Clamp(CurrentMP, 0.0f, MaxMP);
+
+	AD = FMath::Max(0.0f, AD - InAD);
+	AP = FMath::Max(0.0f, AP - InAP);
+	Defense = FMath::Max(0.0f, Defense - InDefense);
+	APDefense = FMath::Max(0.0f, APDefense - InAPDefense);
+	MoveSpeed = FMath::Max(0.0f, MoveSpeed - InMoveSpeed);
+	AttackRate = FMath::Max(0.0f, AttackRate - InAttackRate);
+
+	// 서버 수동 브로드캐스트
+	if (OnMaxHPChanged.IsBound()) OnMaxHPChanged.Broadcast(MaxHP);
+	if (OnCurrentHPChanged.IsBound()) OnCurrentHPChanged.Broadcast(CurrentHP);
+	if (OnMaxMPChanged.IsBound()) OnMaxMPChanged.Broadcast(MaxMP);
+	if (OnCurrentMPChanged.IsBound()) OnCurrentMPChanged.Broadcast(CurrentMP);
+	if (OnADChanged.IsBound()) OnADChanged.Broadcast(AD);
+	if (OnAPChanged.IsBound()) OnAPChanged.Broadcast(AP);
+	if (OnDefenseChanged.IsBound()) OnDefenseChanged.Broadcast(Defense);
+	if (OnAPDefenseChanged.IsBound()) OnAPDefenseChanged.Broadcast(APDefense);
+	if (OnMoveSpeedChanged.IsBound()) OnMoveSpeedChanged.Broadcast(MoveSpeed);
+	if (OnAttackRateChanged.IsBound()) OnAttackRateChanged.Broadcast(AttackRate);
+}
+
 
 // Called when the game starts
 void UStatComponent::BeginPlay()

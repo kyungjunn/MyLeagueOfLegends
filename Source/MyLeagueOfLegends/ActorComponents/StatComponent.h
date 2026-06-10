@@ -63,6 +63,12 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "Events")
 	FOnStatInitCompleteDelegate OnStatInitComplete;
 
+	// 아이템 구매/장착 시 스탯을 가산해주는 함수 (블루프린트 호출 가능)
+	UFUNCTION(BlueprintCallable, Category = "Stat|Adjustment")
+	void AddItemBonusStats(float InAD, float InAP, float InDefense, float InAPDefense, float InMaxHP, float InMaxMP, float InMoveSpeed, float InAttackRate);
+
+	UFUNCTION(BlueprintCallable, Category = "Stat|Adjustment")
+	void RemoveItemBonusStats(float InAD, float InAP, float InDefense, float InAPDefense, float InMaxHP, float InMaxMP, float InMoveSpeed, float InAttackRate);
 
 	// UI 델리게이트 
 	UPROPERTY(BlueprintAssignable, Category = "Events|Stat")
@@ -100,35 +106,25 @@ protected:
 	// Called when the game starts
 	virtual void BeginPlay() override;
 
-	UFUNCTION() 
-	void OnRep_CurrentHP();
+	UFUNCTION() void OnRep_CurrentHP();
 
-	UFUNCTION() 
-	void OnRep_MaxHP();
+	UFUNCTION() void OnRep_MaxHP();
 
-	UFUNCTION() 
-	void OnRep_CurrentMP();
+	UFUNCTION() void OnRep_CurrentMP();
 
-	UFUNCTION() 
-	void OnRep_MaxMP();
+	UFUNCTION() void OnRep_MaxMP();
 
-	UFUNCTION()
-	void OnRep_AD();
+	UFUNCTION()void OnRep_AD();
 
-	UFUNCTION() 
-	void OnRep_AP();
+	UFUNCTION() void OnRep_AP();
 
-	UFUNCTION() 
-	void OnRep_Defense();
+	UFUNCTION() void OnRep_Defense();
 
-	UFUNCTION() 
-	void OnRep_APDefense();
+	UFUNCTION() void OnRep_APDefense();
 
-	UFUNCTION() 
-	void OnRep_MoveSpeed();
+	UFUNCTION() void OnRep_MoveSpeed();
 
-	UFUNCTION() 
-	void OnRep_AttackRate();
+	UFUNCTION() void OnRep_AttackRate();
 
 public:	
 	// Called every frame
@@ -137,7 +133,6 @@ public:
 	// 멀티플레이어 변수 동기화를 위한 함수
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
-public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Setup", meta = (AllowPrivateAccess = "true"))
 	FName CharacterRowName;
 
