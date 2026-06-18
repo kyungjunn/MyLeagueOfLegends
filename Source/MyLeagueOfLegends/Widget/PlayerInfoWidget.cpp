@@ -39,12 +39,7 @@ void UPlayerInfoWidget::InitializeStatComponent(UStatComponent* InStatComponent)
 		TargetStatComponent->OnAttackRateChanged.AddDynamic(this, &UPlayerInfoWidget::UpdateAttackRateText);
 
 		// 초기화 시점 데이터 일치
-		UpdateADText(TargetStatComponent->GetAttackDamage());
-		UpdateAPText(TargetStatComponent->GetAbilityPower());
-		UpdateDefenseText(TargetStatComponent->GetDefense());
-		UpdateAPDefenseText(TargetStatComponent->GetAPDefense());
-		UpdateMoveSpeedText(TargetStatComponent->GetMoveSpeed());
-		UpdateAttackRateText(TargetStatComponent->GetAttackRate());
+		RefreshAllTexts();
 	}
 }
 

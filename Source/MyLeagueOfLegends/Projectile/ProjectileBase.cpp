@@ -5,6 +5,8 @@
 #include "NiagaraComponent.h"
 #include "GameFramework/ProjectileMovementComponent.h"
 
+#include "Net/UnrealNetwork.h"
+
 AProjectileBase::AProjectileBase()
 {
 	PrimaryActorTick.bCanEverTick = true;
@@ -37,25 +39,25 @@ void AProjectileBase::BeginPlay()
 	Sphere->OnComponentBeginOverlap.AddDynamic(this, &AProjectileBase::OnComponentBeginOverlap);
 }
 
-// Projectile 액터가 사라질 때 헬퍼 함수
-void AProjectileBase::StartDestroySequence()
+void AProjectileBase::Destroyed()
 {
-	// 콜리전 끄기
-	Sphere->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	UE_LOG(LogTemp, Warning, TEXT("Niagara Destory"));
+	Super::Destroyed();
 
-	// 이펙트 끄기
+	//Sphere->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	if (Niagara)
 	{
+		// 비활성화
 		Niagara->Deactivate();
-	}
-
-	// 서버에서 소멸
-	if (HasAuthority())
-	{
-		SetLifeSpan(DestroyDelay);
 	}
 }
 
+void AProjectileBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(AProjectileBase, ProjectileDamage);
+}
 
 
 void AProjectileBase::Tick(float DeltaTime)

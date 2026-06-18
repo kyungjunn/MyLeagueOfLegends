@@ -30,6 +30,11 @@ protected:
 	) override;
 
 public:
-	UPROPERTY(BlueprintReadOnly, Category = "Homing", meta = (ExposeOnSpawn = "true"))
+	UPROPERTY(ReplicatedUsing = OnRep_TargetToAttack, BlueprintReadOnly, Category = "Homing", meta = (ExposeOnSpawn = "true"))
 	AActor* TargetToAttack;
+
+	UFUNCTION()
+	void OnRep_TargetToAttack();
+
+	void InitializeHoming();
 };

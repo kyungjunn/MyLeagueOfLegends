@@ -23,8 +23,7 @@ protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
-	// ¼Ò¸ê ÀýÂ÷ Ã³¸® ÇïÆÛ ÇÔ¼ö
-	void StartDestroySequence();
+	virtual void Destroyed() override;
 
 public:	
 	// Called every frame
@@ -41,7 +40,7 @@ protected:
 	TObjectPtr<UProjectileMovementComponent> ProjectileMovement;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Projectile_Settings")
-	float DestroyDelay = 2.0f;
+	float DestroyDelay = 1.0f;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Projectile_Settings")
 	float MoveSpeed = 800.0f;
@@ -49,7 +48,7 @@ protected:
 	UPROPERTY(BlueprintReadOnly, Category = "Projectile_Settings", meta = (ExposeOnSpawn = "true"))
 	AActor* Attacker;
 
-	UPROPERTY(BlueprintReadOnly, Category = "Projectile Settings", meta = (ExposeOnSpawn = "true"))
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Projectile Settings", meta = (ExposeOnSpawn = "true"))
 	float ProjectileDamage;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Projectile_Settings", meta = (ExposeOnSpawn = "true"))
@@ -65,5 +64,5 @@ protected:
 		const FHitResult& SweepResult
 	);
 
-
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 };

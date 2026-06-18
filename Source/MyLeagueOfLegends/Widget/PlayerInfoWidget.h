@@ -24,6 +24,8 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "UI")
 	void InitializeStatComponent(UStatComponent* InStatComponent);
 
+
+
 protected:
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* ADText;

@@ -39,16 +39,16 @@ void UStatComponent::AddItemBonusStats(float InAD, float InAP, float InDefense, 
 	MoveSpeed += InMoveSpeed;
 	AttackRate += InAttackRate;
 
-	if (OnCurrentHPChanged.IsBound()) OnCurrentHPChanged.Broadcast(CurrentHP); 
-	if (OnMaxHPChanged.IsBound()) OnMaxHPChanged.Broadcast(MaxHP); 
-	if (OnCurrentMPChanged.IsBound()) OnCurrentMPChanged.Broadcast(CurrentMP); 
-	if (OnMaxMPChanged.IsBound()) OnMaxMPChanged.Broadcast(MaxMP); 
-	if (OnADChanged.IsBound()) OnADChanged.Broadcast(AD); 
-	if (OnAPChanged.IsBound()) OnAPChanged.Broadcast(AP); 
-	if (OnDefenseChanged.IsBound()) OnDefenseChanged.Broadcast(Defense); 
-	if (OnAPDefenseChanged.IsBound()) OnAPDefenseChanged.Broadcast(APDefense); 
-	if (OnMoveSpeedChanged.IsBound()) OnMoveSpeedChanged.Broadcast(MoveSpeed); 
-	if (OnAttackRateChanged.IsBound()) OnAttackRateChanged.Broadcast(AttackRate);
+	OnRep_MaxHP();
+	OnRep_CurrentHP();
+	OnRep_MaxMP();
+	OnRep_CurrentMP();
+	OnRep_AD();
+	OnRep_AP();
+	OnRep_Defense();
+	OnRep_APDefense();
+	OnRep_MoveSpeed();
+	OnRep_AttackRate();
 }
 
 void UStatComponent::RemoveItemBonusStats(float InAD, float InAP, float InDefense, float InAPDefense, float InMaxHP, float InMaxMP, float InMoveSpeed, float InAttackRate)
@@ -69,17 +69,17 @@ void UStatComponent::RemoveItemBonusStats(float InAD, float InAP, float InDefens
 	MoveSpeed = FMath::Max(0.0f, MoveSpeed - InMoveSpeed);
 	AttackRate = FMath::Max(0.0f, AttackRate - InAttackRate);
 
-	// 서버 수동 브로드캐스트
-	if (OnMaxHPChanged.IsBound()) OnMaxHPChanged.Broadcast(MaxHP);
-	if (OnCurrentHPChanged.IsBound()) OnCurrentHPChanged.Broadcast(CurrentHP);
-	if (OnMaxMPChanged.IsBound()) OnMaxMPChanged.Broadcast(MaxMP);
-	if (OnCurrentMPChanged.IsBound()) OnCurrentMPChanged.Broadcast(CurrentMP);
-	if (OnADChanged.IsBound()) OnADChanged.Broadcast(AD);
-	if (OnAPChanged.IsBound()) OnAPChanged.Broadcast(AP);
-	if (OnDefenseChanged.IsBound()) OnDefenseChanged.Broadcast(Defense);
-	if (OnAPDefenseChanged.IsBound()) OnAPDefenseChanged.Broadcast(APDefense);
-	if (OnMoveSpeedChanged.IsBound()) OnMoveSpeedChanged.Broadcast(MoveSpeed);
-	if (OnAttackRateChanged.IsBound()) OnAttackRateChanged.Broadcast(AttackRate);
+	// 서버 수동 호출
+	OnRep_MaxHP();
+	OnRep_CurrentHP();
+	OnRep_MaxMP();
+	OnRep_CurrentMP();
+	OnRep_AD();
+	OnRep_AP();
+	OnRep_Defense();
+	OnRep_APDefense();
+	OnRep_MoveSpeed();
+	OnRep_AttackRate();
 }
 
 
@@ -111,6 +111,17 @@ void UStatComponent::BeginPlay()
 				MoveSpeed = StatRow->MoveSpeed;
 				AttackRate = StatRow->AttackRate;
 
+				OnRep_MaxHP();
+				OnRep_CurrentHP();
+				OnRep_MaxMP();
+				OnRep_CurrentMP();
+				OnRep_AD();
+				OnRep_AP();
+				OnRep_Defense();
+				OnRep_APDefense();
+				OnRep_MoveSpeed();
+				OnRep_AttackRate();
+
 				UE_LOG(LogTemp, Warning, TEXT("[%s] Stat Initialized Successfully! AD: %f, HP: %f"),
 					*StatRow->CharacterName.ToString(), AD, MaxHP);
 
@@ -130,7 +141,6 @@ void UStatComponent::BeginPlay()
 			UE_LOG(LogTemp, Error, TEXT("StatComponent: DataTable or CharacterRowName is Missing!"));
 		}
 	}
-	
 }
 
 void UStatComponent::OnRep_CurrentHP() { if (OnCurrentHPChanged.IsBound()) OnCurrentHPChanged.Broadcast(CurrentHP); }

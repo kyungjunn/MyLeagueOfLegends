@@ -5,6 +5,8 @@
 #include "GameFramework/ProjectileMovementComponent.h"
 #include "Kismet/GameplayStatics.h"
 
+#include "Net/UnrealNetwork.h"
+
 AHomingProjectile::AHomingProjectile()
 {
 	PrimaryActorTick.bCanEverTick = false;
@@ -14,21 +16,11 @@ void AHomingProjectile::BeginPlay()
 {
 	Super::BeginPlay();
 
-	if (ProjectileMovement && IsValid(TargetToAttack))
+	if (IsValid(TargetToAttack))
 	{
-		ProjectileMovement->ProjectileGravityScale = 0.0f;
-
-		ProjectileMovement->Velocity = GetActorForwardVector() * MoveSpeed;
-
-		ProjectileMovement->bIsHomingProjectile = true;
-		ProjectileMovement->HomingAccelerationMagnitude = 5000.0f;
-
-		ProjectileMovement->HomingTargetComponent = TargetToAttack->GetRootComponent();
+		InitializeHoming();
 	}
-	else
-	{
-		StartDestroySequence();
-	}
+	
 }
 
 void AHomingProjectile::OnComponentBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
@@ -43,8 +35,37 @@ void AHomingProjectile::OnComponentBeginOverlap(UPrimitiveComponent* OverlappedC
 
 		UGameplayStatics::ApplyDamage(TargetToAttack, ProjectileDamage, InstigatorController, Attacker, ProjectileDamageType);
 
-		StartDestroySequence();
+		// 서버에서 즉시 파괴
+		UE_LOG(LogTemp, Warning, TEXT("Server Destroy"));
+		Destroy();
 	}
+}
+
+void AHomingProjectile::OnRep_TargetToAttack()
+{
+	InitializeHoming();
+}
+
+void AHomingProjectile::InitializeHoming()
+{
+	if (ProjectileMovement && IsValid(TargetToAttack))
+	{
+		ProjectileMovement->ProjectileGravityScale = 0.0f;
+
+		//ProjectileMovement->Velocity = GetActorForwardVector() * ProjectileMovement->InitialSpeed;
+
+		ProjectileMovement->bIsHomingProjectile = true;
+		ProjectileMovement->HomingAccelerationMagnitude = 5000.0f;
+
+		ProjectileMovement->HomingTargetComponent = TargetToAttack->GetRootComponent();
+	}
+}
+
+void AHomingProjectile::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(AHomingProjectile, TargetToAttack);
 }
 
 
