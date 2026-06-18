@@ -44,7 +44,8 @@ void AProjectileBase::Destroyed()
 	UE_LOG(LogTemp, Warning, TEXT("Niagara Destory"));
 	Super::Destroyed();
 
-	//Sphere->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	Sphere->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	
 	if (Niagara)
 	{
 		// 비활성화

@@ -36,7 +36,7 @@ void AHomingProjectile::OnComponentBeginOverlap(UPrimitiveComponent* OverlappedC
 		UGameplayStatics::ApplyDamage(TargetToAttack, ProjectileDamage, InstigatorController, Attacker, ProjectileDamageType);
 
 		// 서버에서 즉시 파괴
-		UE_LOG(LogTemp, Warning, TEXT("Server Destroy"));
+		//UE_LOG(LogTemp, Warning, TEXT("Server Destroy"));
 		Destroy();
 	}
 }
@@ -52,10 +52,8 @@ void AHomingProjectile::InitializeHoming()
 	{
 		ProjectileMovement->ProjectileGravityScale = 0.0f;
 
-		//ProjectileMovement->Velocity = GetActorForwardVector() * ProjectileMovement->InitialSpeed;
-
 		ProjectileMovement->bIsHomingProjectile = true;
-		ProjectileMovement->HomingAccelerationMagnitude = 5000.0f;
+		ProjectileMovement->HomingAccelerationMagnitude = 1000.0f;
 
 		ProjectileMovement->HomingTargetComponent = TargetToAttack->GetRootComponent();
 	}

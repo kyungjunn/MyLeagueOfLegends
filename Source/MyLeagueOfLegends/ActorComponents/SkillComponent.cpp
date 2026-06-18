@@ -50,7 +50,7 @@ bool USkillComponent::C2S_UseSkill_Validate(ESkillType SkillType, const FVector&
 void USkillComponent::C2S_UseSkill_Implementation(ESkillType SkillType, const FVector& TargetLocation)
 {
 	// 서버 검증
-	// Stat에서 마나와 쿨타임 계산 체크해야함. if (StatComponent->GetCurrentMana() < Q_ManaCost)
+	// Stat에서 마나 계산 체크해야함. if (StatComponent->GetCurrentMana() < Q_ManaCost)
 	
 	// 이동 멈춤
 	ACharacter* Owner = Cast<ACharacter>(GetOwner());
@@ -92,7 +92,7 @@ void USkillComponent::ExecuteSkillQ(const FVector& TargetLocation)
 	SpawnRotation.Pitch = 0.0f; // 피치 고정(바닥과 평행)
 
 	FActorSpawnParameters SpawnParams;
-	SpawnParams.Owner = Owner;
+	SpawnParams.Owner = Owner;	
 	SpawnParams.Instigator = Owner;
 
 	// 발사체 스폰

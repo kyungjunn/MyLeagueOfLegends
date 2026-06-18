@@ -42,9 +42,6 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Projectile_Settings")
 	float DestroyDelay = 1.0f;
 	
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Projectile_Settings")
-	float MoveSpeed = 800.0f;
-	
 	UPROPERTY(BlueprintReadOnly, Category = "Projectile_Settings", meta = (ExposeOnSpawn = "true"))
 	AActor* Attacker;
 
