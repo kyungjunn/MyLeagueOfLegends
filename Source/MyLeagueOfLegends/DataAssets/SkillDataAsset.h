@@ -11,7 +11,7 @@ UENUM(BlueprintType)
 enum class ESkillMechanicType : uint8
 {
 	NonTargetProjectile		UMETA(DisplayName = "NonTarget Projectile"),
-	TargetorInstant			UMETA(DisplayName = "Targeting Instant"),
+	TargetProjectile		UMETA(DisplayName = "Targeting Instant"),
 	LocationDash			UMETA(DisplayName = "Location Dash")
 };
 
@@ -42,11 +42,14 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Skill Stats")
 	float BaseDamage = 60.0f;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Skill Stats")
+	float MaxRange = 300.0f;
+
 	// 애니메이션
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation")
 	class UAnimMontage* SkillMontage;
 	
 	// 발사체
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Projectile", meta = (EditCondition = "MechanicType == ESkillMechanicType::NonTarget_Projectile"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Projectile")
 	TSubclassOf<AActor> ProjectileClass;
 };

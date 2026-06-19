@@ -62,4 +62,8 @@ protected:
 	);
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
+public:
+	// 외부에서 접근할 수 있는 Setter 함수
+	FORCEINLINE void SetProjectileDamage(float InDamage) { ProjectileDamage = InDamage; }
 };

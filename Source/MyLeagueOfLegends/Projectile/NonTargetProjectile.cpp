@@ -63,7 +63,13 @@ void ANonTargetProjectile::Tick(float DeltaSeconds)
 
 void ANonTargetProjectile::OnComponentBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
-	if (!HasAuthority() || OtherActor == Attacker)
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	// 서버 세계라면 아래 안전장치를 계속 수행합니다.
+	if (OtherActor == nullptr || OtherActor == this || OtherActor == GetOwner())
 	{
 		return;
 	}
@@ -71,12 +77,13 @@ void ANonTargetProjectile::OnComponentBeginOverlap(UPrimitiveComponent* Overlapp
 	if (OtherActor->Implements<UDamageable>())
 	{
 		AController* InstigatorController = nullptr;
-		if (APawn* AttackerPawn = Cast<APawn>(Attacker))
+		APawn* AttackerPawn = GetInstigator();
+		if (AttackerPawn)
 		{
 			InstigatorController = AttackerPawn->GetController();
 		}
 
-		UGameplayStatics::ApplyDamage(OtherActor, ProjectileDamage, InstigatorController, Attacker, ProjectileDamageType);
+		UGameplayStatics::ApplyDamage(OtherActor, ProjectileDamage, InstigatorController, AttackerPawn, ProjectileDamageType);
 
 		if (ProjectileMovement)
 		{
