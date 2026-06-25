@@ -8,12 +8,12 @@ public class MyLeagueOfLegends : ModuleRules
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 	
-		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "Niagara"});
+		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "Niagara", "UMG"});
 
 		PrivateDependencyModuleNames.AddRange(new string[] {  });
 
 		// 내 모듈의 모든 하위 폴더 경로를 인클루드 경로에 포함
-		PublicIncludePaths.Add(ModuleDirectory);
+		//PublicIncludePaths.Add(ModuleDirectory);
 
 		// Uncomment if you are using Slate UI
 		// PrivateDependencyModuleNames.AddRange(new string[] { "Slate", "SlateCore" });

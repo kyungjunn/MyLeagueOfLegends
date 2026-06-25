@@ -7,6 +7,7 @@
 #include "Net/UnrealNetwork.h"
 
 #include "Components/CapsuleComponent.h"
+#include "Projectile/NonTargetProjectile.h"
 
 
 USkillComponent::USkillComponent()
@@ -79,7 +80,7 @@ float USkillComponent::GetSkillRemainingCooldown(ESkillType SkillType)
 	case ESkillType::R:
 		return R_CooldownEndTime - GetWorld()->GetTimeSeconds();
 		break;
-	} 
+	}
 
 	return 0.0f;
 }
@@ -92,7 +93,6 @@ void USkillComponent::RequestUseSkill(ESkillType SkillType, const FVector& Targe
 		return;
 	}
 
-	UE_LOG(LogTemp, Warning, TEXT("go@@@@@@"));
 	// 스킬 사용 시 이동 멈춤
 	ACharacter* Owner = Cast<ACharacter>(GetOwner());
 	if (Owner && Owner->GetCharacterMovement())
@@ -247,10 +247,11 @@ void USkillComponent::ExecuteNonTargetSkill(USkillDataAsset* SkillData, const FV
 		Owner->MoveIgnoreActorAdd(SpawnedProjectile);
 		
 		// 데이터 에셋에 등록되어 있는 데미지 수치를 발사체에 세팅
-		AProjectileBase* BaseProjectile = Cast<AProjectileBase>(SpawnedProjectile);
-		if (BaseProjectile)
+		ANonTargetProjectile* NonTargetProj = Cast<ANonTargetProjectile>(SpawnedProjectile);
+		if (NonTargetProj)
 		{
-			BaseProjectile->SetProjectileDamage(SkillData->BaseDamage);
+			NonTargetProj->SetProjectileDamage(SkillData->BaseDamage);
+			NonTargetProj->SetMaxRange(SkillData->MaxRange);
 		}
 	}
 }
@@ -267,7 +268,7 @@ void USkillComponent::ExecuteDashSkill(USkillDataAsset* SkillData, const FVector
 		return;
 	}
 
-	// 비전이동은 "서버"에서 위치를 변경해야 모든 클라이언트에게 완벽하게 동기화됩니다.
+	// 비전이동은 서버에서 위치를 변경
 	if (Owner->HasAuthority() == false)
 	{
 		return;
@@ -275,11 +276,11 @@ void USkillComponent::ExecuteDashSkill(USkillDataAsset* SkillData, const FVector
 
 	FVector StartLocation = Owner->GetActorLocation();
 
-	// 평면 연산을 위해 높이(Z) 값을 시전자 기준으로 통일시킵니다.
+	// 평면 연산을 위해 높이(Z) 값을 시전자 기준으로 통일
 	FVector FlatTarget = TargetLocation;
 	FlatTarget.Z = StartLocation.Z;
 
-	// 마우스 클릭 위치까지의 방향과 거리를 계산합니다.
+	// 마우스 클릭 위치까지의 방향과 거리를 계산
 	FVector DashDirection = FlatTarget - StartLocation;
 	float DistanceToTarget = DashDirection.Size();
 	DashDirection.Normalize();
@@ -287,15 +288,15 @@ void USkillComponent::ExecuteDashSkill(USkillDataAsset* SkillData, const FVector
 	// 최종적으로 도달할 순간이동 목적지 변수
 	FVector FinalDestination = FlatTarget;
 
-	//  1 데이터 에셋에 지정된 최대 사거리를 넘어서 클릭했다면, 사거리 한계선까지만 이동시킵니다.
-	float SkillMaxRange = SkillData->MaxRange > 0.0f ? SkillData->MaxRange : 475.0f; // 디폴트 475cm (롤 비전이동 사거리)
+	// 데이터 에셋에 지정된 최대 사거리를 넘어서 클릭했다면, 사거리 한계선까지만 이동
+	float SkillMaxRange = SkillData->MaxRange > 0.0f ? SkillData->MaxRange : 475.0f; // 디폴트 475cm
 
 	if (DistanceToTarget > SkillMaxRange)
 	{
 		FinalDestination = StartLocation + (DashDirection * SkillMaxRange);
 	}
 
-	// 2 순간이동한 위치에 있는 땅바닥(NavMesh) 높이로 Z축을 보정해주어야 허공에 뜨거나 땅에 파묻히지 않습니다.
+	// 순간이동한 위치에 있는 땅바닥 높이로 Z축을 보정
 	FVector SafeDestination = FinalDestination;
 	FHitResult GroundHit;
 	FVector CheckStart = FinalDestination + FVector(0.0f, 0.0f, 100.0f);   // 내 머리 위 1m
@@ -304,23 +305,23 @@ void USkillComponent::ExecuteDashSkill(USkillDataAsset* SkillData, const FVector
 	FCollisionQueryParams TraceParams;
 	TraceParams.AddIgnoredActor(Owner);
 
-	// 바닥 지형(Static 월드 콜리전)을 수직으로 레이캐스팅 트레이스합니다.
+	// 바닥 지형(Static 월드 콜리전)을 수직 레이캐스팅 트레이스
 	if (GetWorld()->LineTraceSingleByChannel(GroundHit, CheckStart, CheckEnd, ECC_WorldStatic, TraceParams))
 	{
 		SafeDestination.Z = GroundHit.ImpactPoint.Z + Owner->GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
 	}
 
-	// 3. 최종 안전 확인된 위치로 시전자를 즉시 텔레포트 시킵니다.
+	// 확인된 위치로 시전자를 텔레포트
 	// bNoKnockback=true, bKeepVelocity=false 옵션으로 안전하게 이동
 	Owner->SetActorLocation(SafeDestination, false, nullptr, ETeleportType::TeleportPhysics);
 
-	// 4. 비전이동이 완료된 직후, 이즈리얼 캐릭터Mesh가 날아간 목적지 방향을 새로 바라보게 정렬합니다.
+	// 비전이동이 완료된 직후, 캐릭터 Mesh가 날아간 목적지 방향을 바라보게 정렬
 	if (!DashDirection.IsNearlyZero())
 	{
 		Owner->SetActorRotation(DashDirection.Rotation());
 	}
 
-	// 5. 비전이동 후 원래 가려던 이동 명령 패킷(무브먼트 관성)이 남아있다면 꼬이므로 한 번 더 무브먼트를 청소합니다.
+	// 비전이동 후 원래 가려던 이동 명령 패킷(무브먼트 관성)이 남아있다면 꼬이므로 무브먼트를 지움.
 	if (Owner->GetCharacterMovement())
 	{
 		Owner->GetCharacterMovement()->StopActiveMovement();
@@ -350,7 +351,3 @@ void USkillComponent::S2M_SKillEffect_Implementation(ESkillType SkillType)
 		Owner->PlayAnimMontage(SkillData->SkillMontage);
 	}
 }
-
-
-
-

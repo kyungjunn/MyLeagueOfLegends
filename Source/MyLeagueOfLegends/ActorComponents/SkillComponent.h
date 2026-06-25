@@ -42,6 +42,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Skill")
 	float GetSkillRemainingCooldown(ESkillType SkillType);
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Skill Slots")
+	TMap<ESkillType, USkillDataAsset*> SkillSlots;
+
 protected:
 	// 서버 RPC 스킬 
 	UFUNCTION(Server, Reliable, WithValidation)
@@ -64,9 +67,6 @@ private:
 	void ExecuteDashSkill(class USkillDataAsset* SkillData, const FVector& TargetLocation);
 
 protected:
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Skill Slots")
-	TMap<ESkillType, USkillDataAsset*> SkillSlots;
-
 	// 스킬별로 언제 쿨타임이 끝나는지 기록
 	UPROPERTY(Replicated)
 	float Q_CooldownEndTime;

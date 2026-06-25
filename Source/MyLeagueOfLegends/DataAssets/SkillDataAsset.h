@@ -6,6 +6,10 @@
 #include "Engine/DataAsset.h"
 #include "SkillDataAsset.generated.h"
 
+
+class UTexture2D;
+
+
 // 스킬 메커니즘 타입
 UENUM(BlueprintType)
 enum class ESkillMechanicType : uint8
@@ -28,6 +32,9 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Skill Info")
 	FString SkillName;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Skill Info")
+	UTexture2D* SkillIcon;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Skill Info")
 	ESkillMechanicType MechanicType;

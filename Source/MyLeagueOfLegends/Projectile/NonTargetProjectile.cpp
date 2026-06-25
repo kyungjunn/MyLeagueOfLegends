@@ -74,6 +74,12 @@ void ANonTargetProjectile::OnComponentBeginOverlap(UPrimitiveComponent* Overlapp
 		return;
 	}
 
+	// 중복 히트 검사
+	if (DamagedActors.Contains(OtherActor))
+	{
+		return;
+	}
+
 	if (OtherActor->Implements<UDamageable>())
 	{
 		AController* InstigatorController = nullptr;
@@ -85,11 +91,21 @@ void ANonTargetProjectile::OnComponentBeginOverlap(UPrimitiveComponent* Overlapp
 
 		UGameplayStatics::ApplyDamage(OtherActor, ProjectileDamage, InstigatorController, AttackerPawn, ProjectileDamageType);
 
-		if (ProjectileMovement)
+		DamagedActors.Add(OtherActor);
+
+		if (!bIsPenetarting)
 		{
-			ProjectileMovement->StopMovementImmediately();
+			// 관통하는 발사체가 아니면 바로 파괴
+			if (ProjectileMovement)
+			{
+				ProjectileMovement->StopMovementImmediately();
+			}
+			Destroy();
+		}
+		else
+		{
+			// +오버랩될 때마다 데미지 감소 ProjectileDamage *= 0.9f;
 		}
 
-		Destroy();
 	}
 }
