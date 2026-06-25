@@ -13,7 +13,7 @@ public class MyLeagueOfLegends : ModuleRules
 		PrivateDependencyModuleNames.AddRange(new string[] {  });
 
 		// 내 모듈의 모든 하위 폴더 경로를 인클루드 경로에 포함
-		//PublicIncludePaths.Add(ModuleDirectory);
+		PublicIncludePaths.Add(ModuleDirectory);
 
 		// Uncomment if you are using Slate UI
 		// PrivateDependencyModuleNames.AddRange(new string[] { "Slate", "SlateCore" });
