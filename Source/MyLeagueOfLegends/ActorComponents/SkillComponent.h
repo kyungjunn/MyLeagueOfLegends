@@ -12,7 +12,7 @@ class USkillDataAsset;
 UENUM(BlueprintType)
 enum class ESkillType : uint8
 {
-	Q, W, E, R
+	Passive, Q, W, E, R
 };
 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )

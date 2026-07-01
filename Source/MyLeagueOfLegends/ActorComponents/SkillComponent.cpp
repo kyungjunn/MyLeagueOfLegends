@@ -143,7 +143,6 @@ void USkillComponent::C2S_UseSkill_Implementation(ESkillType SkillType, const FV
 {
 	if (!SkillSlots.Contains(SkillType) || SkillSlots[SkillType] == nullptr)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("what???"));
 		return;
 	}
 	// 슬롯에 등록된 데이터 에셋 가져오기
