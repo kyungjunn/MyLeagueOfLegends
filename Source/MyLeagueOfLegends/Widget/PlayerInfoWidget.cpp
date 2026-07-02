@@ -3,6 +3,7 @@
 
 #include "PlayerInfoWidget.h"
 #include "Components/TextBlock.h"
+#include "Components/Image.h"
 #include "ActorComponents/StatComponent.h"
 
 
@@ -45,6 +46,20 @@ void UPlayerInfoWidget::InitializeStatComponent(UStatComponent* InStatComponent)
 
 void UPlayerInfoWidget::RefreshAllTexts()
 {
+	if (TargetStatComponent == nullptr)
+	{
+		return;
+	}
+
+	if (PlayerImage)
+	{
+		UTexture2D* IconTexture = TargetStatComponent->GetCharacterIcon();
+		if (IconTexture)
+		{
+			PlayerImage->SetBrushFromTexture(IconTexture);
+		}
+	}
+
 	UpdateADText(TargetStatComponent->GetAttackDamage());
 	UpdateAPText(TargetStatComponent->GetAbilityPower());
 	UpdateDefenseText(TargetStatComponent->GetDefense());

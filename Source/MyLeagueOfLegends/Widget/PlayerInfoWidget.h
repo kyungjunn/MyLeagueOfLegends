@@ -8,6 +8,7 @@
 
 class UTextBlock;
 class UStatComponent;
+class UImage;
 
 /**
  * 
@@ -28,22 +29,25 @@ public:
 
 protected:
 	UPROPERTY(meta = (BindWidget))
-	UTextBlock* ADText;
+	TObjectPtr<UImage> PlayerImage;
 
 	UPROPERTY(meta = (BindWidget))
-	UTextBlock* APText;
+	TObjectPtr<UTextBlock> ADText;
 
 	UPROPERTY(meta = (BindWidget))
-	UTextBlock* MoveSpeedText;
+	TObjectPtr<UTextBlock> APText;
 
 	UPROPERTY(meta = (BindWidget))
-	UTextBlock* AttackRateText;
+	TObjectPtr<UTextBlock> MoveSpeedText;
 
 	UPROPERTY(meta = (BindWidget))
-	UTextBlock* DefenseText;
+	TObjectPtr<UTextBlock> AttackRateText;
 
 	UPROPERTY(meta = (BindWidget))
-	UTextBlock* APDefenseText;
+	TObjectPtr<UTextBlock> DefenseText;
+
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UTextBlock> APDefenseText;
 
 	UFUNCTION()
 	void RefreshAllTexts();

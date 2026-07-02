@@ -98,6 +98,9 @@ void UStatComponent::BeginPlay()
 
 			if (StatRow)
 			{
+				// 초상화
+				CharacterIcon = StatRow->CharacterIcon;
+
 				MaxHP = StatRow->MaxHP;
 				CurrentHP = MaxHP;
 
@@ -141,6 +144,24 @@ void UStatComponent::BeginPlay()
 			UE_LOG(LogTemp, Error, TEXT("StatComponent: DataTable or CharacterRowName is Missing!"));
 		}
 	}
+	else
+	{
+		// 클라이언트에서도 초상화 세팅할 수 있게 예외처리
+		if (StatDataTable != nullptr && CharacterRowName != NAME_None)
+		{
+			FChampionStatRow* StatRow = StatDataTable->FindRow<FChampionStatRow>(CharacterRowName, TEXT("StatSetup_Client"));
+			if (StatRow)
+			{
+				CharacterIcon = StatRow->CharacterIcon;
+
+				if (OnStatInitComplete.IsBound())
+				{
+					OnStatInitComplete.Broadcast();
+				}
+			}
+		}
+	}
+
 }
 
 void UStatComponent::OnRep_CurrentHP() { if (OnCurrentHPChanged.IsBound()) OnCurrentHPChanged.Broadcast(CurrentHP); }

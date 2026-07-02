@@ -9,6 +9,8 @@
 
 #include "StatComponent.generated.h"
 
+class UTexture2D;
+
 // 스탯 로드 완료 시 델리게이트
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnStatInitCompleteDelegate);
 
@@ -24,6 +26,9 @@ struct FChampionStatRow : public FTableRowBase
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stat")
 	FName CharacterName;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stat")
+	TObjectPtr<UTexture2D> CharacterIcon;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stat")
 	float AD;
@@ -141,6 +146,9 @@ public:
 
 
 protected:
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Stat")
+	TObjectPtr<UTexture2D> CharacterIcon;
+
 	// ReplicatedUsing 매크로 연동
 	UPROPERTY(ReplicatedUsing = OnRep_CurrentHP, VisibleAnywhere, BlueprintReadOnly, Category = "Stat")
 	float CurrentHP;
@@ -174,6 +182,7 @@ protected:
 
 public:
 	// 외부 안전 접근용 Getter 진형
+	FORCEINLINE UTexture2D* GetCharacterIcon() const { return CharacterIcon; }
 	FORCEINLINE float GetCurrentHP() const { return CurrentHP; }
 	FORCEINLINE float GetMaxHP() const { return MaxHP; }
 	FORCEINLINE float GetCurrentMP() const { return CurrentMP; }
