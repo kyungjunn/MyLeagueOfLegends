@@ -3,75 +3,80 @@
 
 #include "LOLGameMode.h"
 #include "LOLPlayerState.h"
+#include "LOLGameState.h"
+#include "ActorComponents/StatComponent.h"
 #include "GameFramework/PlayerController.h"
+#include "GameFramework/PlayerStart.h"
+#include "EngineUtils.h"
 
 ALOLGameMode::ALOLGameMode()
 {
-	// 맵 접속 시 캐릭터를 주지 않고 관전자 모드로 대기.
-	bStartPlayersAsSpectators = true; 
-	PlayerStateClass = ALOLPlayerState::StaticClass();
+
 }
 
-void ALOLGameMode::PostLogin(APlayerController* NewPlayer)
+void ALOLGameMode::OnPlayerSubmittedSelection(APlayerController* InPC, ALOLPlayerState* InPS)
 {
-	Super::PostLogin(NewPlayer);
+	SpawnChampionForPlayer(InPC, InPS);
 
-	ALOLPlayerState* PS = NewPlayer->GetPlayerState<ALOLPlayerState>();
-	if (PS)
+	if (++SpawnedPlayerCount >= GetNumPlayers())
 	{
-		if (GetNumPlayers() == 1)
+		if (ALOLGameState* GS = GetGameState<ALOLGameState>())
 		{
-			PS->SetTeam(ETeam::Blue);
-		}
-		else
-		{
-			PS->SetTeam(ETeam::Red);
+			GS->bMatchStarted = true;
+			GS->OnRep_MatchStarted();
 		}
 	}
 }
 
-void ALOLGameMode::CheckAllPlayersReady()
-{
-	int32 ReadyCount = 0;
-	int32 TotalPlayers = GetNumPlayers();
 
-	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+void ALOLGameMode::SpawnChampionForPlayer(APlayerController* InPC, ALOLPlayerState* InPS)
+{
+	if (!ChampionDataTable)
 	{
-		if (APlayerController* PC = It->Get())
-		{
-			if (ALOLPlayerState* PS = PC->GetPlayerState<ALOLPlayerState>())
-			{
-				if (PS->IsReady())
-				{
-					ReadyCount++;
-				}
-			}
-		}
+		return;
 	}
 
-	// 1대1 기준 
-	if (TotalPlayers >= 2 && ReadyCount == TotalPlayers)
+	FName RowName = InPS->GetSelectedChampion();
+	FChampionStatRow* StatRow = ChampionDataTable->FindRow< FChampionStatRow>(RowName, TEXT(""));
+	if (!StatRow || !StatRow->ChampionPawnClass)
 	{
-		StartInGameMatch();
+		return;
+	}
+
+	// 팀에 맞게 스폰위치 
+	FVector SpawnLocation = FVector::ZeroVector;
+	FRotator SpawnRotation = FRotator::ZeroRotator;
+	if (AActor* StartSpot = FindPlayerStartForTeam(InPS->GetTeam()))
+	{
+		SpawnLocation = StartSpot->GetActorLocation();
+		SpawnRotation = StartSpot->GetActorRotation();
+	}
+
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+
+	APawn* NewPawn = GetWorld()->SpawnActor<APawn>(StatRow->ChampionPawnClass, SpawnLocation, SpawnRotation, SpawnParams);
+	if (NewPawn)
+	{
+		// 기존에 조종 중이던 임시 Pawn(선택 화면용 옵저버 등)이 있다면 정리
+		if (APawn* OldPawn = InPC->GetPawn())
+		{
+			OldPawn->Destroy();
+		}
+
+		InPC->Possess(NewPawn);
 	}
 }
 
-void ALOLGameMode::StartInGameMatch()
+AActor* ALOLGameMode::FindPlayerStartForTeam(ETeam Team)
 {
-	OnInGameMatchStarted.Broadcast();
-
-	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+	FString Tag = (Team == ETeam::Blue) ? TEXT("BlueStart") : TEXT("RedStart");
+	for (TActorIterator<APlayerStart> It(GetWorld()); It; ++It)
 	{
-		APlayerController* PC = It->Get();
-		if (!PC)
+		if (It->PlayerStartTag == FName(*Tag))
 		{
-			continue;
-		}
-
-		ALOLPlayerState* PS = PC->GetPlayerState<ALOLPlayerState>();
-		if (!PS)
-		{
-			continue;
+			return *It;
 		}
 	}
+	return nullptr;
 }

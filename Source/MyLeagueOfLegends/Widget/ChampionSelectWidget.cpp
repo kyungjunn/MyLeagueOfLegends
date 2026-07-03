@@ -1,4 +1,4 @@
-
+ï»¿
 #include "ChampionSelectWidget.h"
 #include "Components/WrapBox.h"
 #include "Components/Button.h"
@@ -18,10 +18,10 @@ void UChampionSelectWidget::NativeConstruct()
         ReadyButton->OnClicked.AddDynamic(this, &UChampionSelectWidget::OnReadyClicked);
     }
 
-    // À§Á¬ÀÌ È­¸é¿¡ ÄÑÁöÀÚ¸¶ÀÚ ¸®½ºÆ® ÀÚµ¿ ±¸¼º
+    // ìœ„ì ¯ì´ í™”ë©´ì— ì¼œì§€ìë§ˆì ë¦¬ìŠ¤íŠ¸ ìë™ êµ¬ì„±
     GenerateChampionList();
 
-    // PlayerStateÀÇ º¯°æ ÀÌº¥Æ® ±¸µ¶
+    // PlayerStateì˜ ë³€ê²½ ì´ë²¤íŠ¸ êµ¬ë…
     APlayerController* PC = GetOwningPlayer();
     if (PC)
     {
@@ -31,32 +31,14 @@ void UChampionSelectWidget::NativeConstruct()
         }
     }
 
-    // »ó´ë¹æ Á¤º¸ ½Ç½Ã°£ µ¿±âÈ­ ¹ÙÀÎµù
-    //if (UWorld* World = GetWorld())
-    //{
-    //    if (AGameStateBase* GS = World->GetGameState())
-    //    {
-    //        for (APlayerState* BasePS : GS->PlayerArray)
-    //        {
-    //            // »ó´ë¹æ PlayerState¸¦ Ã£¾Æ¼­ OnSelectionChanged ÀÌº¥Æ® ¿¬°á
-    //            if (BasePS && BasePS != PC->PlayerState)
-    //            {
-    //                if (ALOLPlayerState* EnemyPS = Cast<ALOLPlayerState>(BasePS))
-    //                {
-    //                    EnemyPS->OnSelectionChanged.AddDynamic(this, &UChampionSelectWidget::RefreshSelectionUI);
-    //                }
-    //            }
-    //        }
-    //    }
-    //}
-
+    bSelfBound = false;
     bEnemyBound = false;
     RefreshSelectionUI();
 }
 
 void UChampionSelectWidget::NativeDestruct()
 {
-    // ¸Ş¸ğ¸® ´©¼ö ¹æÁö¸¦ À§ÇÑ ¾ğ¹ÙÀÎµù
+    // ë©”ëª¨ë¦¬ ëˆ„ìˆ˜ ë°©ì§€ë¥¼ ìœ„í•œ ì–¸ë°”ì¸ë”©
     if (APlayerController* PC = GetOwningPlayer())
     {
         if (ALOLPlayerState* MyPS = PC->GetPlayerState<ALOLPlayerState>())
@@ -71,27 +53,39 @@ void UChampionSelectWidget::NativeTick(const FGeometry& MyGeometry, float InDelt
 {
     Super::NativeTick(MyGeometry, InDeltaTime);
 
-    // »ó´ë¹æ ¹ÙÀÎµùÀÌ ¾ÆÁ÷ ¾È ³¡³µ´Ù¸é ²öÁú±â°Ô ¸Å ÇÁ·¹ÀÓ GameState¸¦ ¾ÈÀü °Ë»çÇÕ´Ï´Ù.
+    APlayerController* LocalPC = GetOwningPlayer();
+
+    // ìê¸° ìì‹  ë°”ì¸ë”© í´ë§
+    if (!bSelfBound && LocalPC)
+    {
+        if (ALOLPlayerState* MyPS = LocalPC->GetPlayerState<ALOLPlayerState>())
+        {
+            MyPS->OnSelectionChanged.AddDynamic(this, &UChampionSelectWidget::RefreshSelectionUI);
+            bSelfBound = true;
+            UE_LOG(LogTemp, Warning, TEXT("[SelfBind] ì„±ê³µ"));
+            RefreshSelectionUI();
+        }
+    }
+
+    // ìƒëŒ€ë°© ë°”ì¸ë”© í´ë§
     if (!bEnemyBound)
     {
         UWorld* World = GetWorld();
         AGameStateBase* GS = World ? World->GetGameState() : nullptr;
-        APlayerController* LocalPC = GetOwningPlayer();
-
         if (GS && LocalPC)
         {
             for (APlayerState* BasePS : GS->PlayerArray)
             {
-                // µåµğ¾î ³×Æ®¿öÅ© ¼±À» Å¸°í »ó´ë¹æ PlayerState ÆĞÅ¶ÀÌ ³» ÄÄÇ»ÅÍ ¿ùµå¿¡ ¾ÈÂøÇß´Ù¸é!
+                // ë“œë””ì–´ ë„¤íŠ¸ì›Œí¬ ì„ ì„ íƒ€ê³  ìƒëŒ€ë°© PlayerState íŒ¨í‚·ì´ ë‚´ ì»´í“¨í„° ì›”ë“œì— ì•ˆì°©í–ˆë‹¤ë©´!
                 if (BasePS && BasePS != LocalPC->PlayerState)
                 {
                     if (ALOLPlayerState* EnemyPS = Cast<ALOLPlayerState>(BasePS))
                     {
-                        // ¾ÈÀüÇÏ°Ô µ¿Àû ¹ÙÀÎµù ¼º°ø ½ÃÅ°°í ·çÇÁ Å»Ãâ
+                        // ì•ˆì „í•˜ê²Œ ë™ì  ë°”ì¸ë”© ì„±ê³µ ì‹œí‚¤ê³  ë£¨í”„ íƒˆì¶œ
                         EnemyPS->OnSelectionChanged.AddDynamic(this, &UChampionSelectWidget::RefreshSelectionUI);
                         bEnemyBound = true;
 
-                        // ¹ÙÀÎµù ¼º°øÇßÀ¸´Ï UI Áï½Ã ÇÑ ¹ø »õ·Î°íÄ§
+                        // ë°”ì¸ë”© ì„±ê³µí–ˆìœ¼ë‹ˆ UI ì¦‰ì‹œ í•œ ë²ˆ ìƒˆë¡œê³ ì¹¨
                         RefreshSelectionUI();
                         break;
                     }
@@ -105,10 +99,10 @@ void UChampionSelectWidget::GenerateChampionList()
 {
     if (!ChampionDataTable || !ChampionSlotClass || !ChampionListBox) return;
 
-    // ±âÁ¸ ¸®½ºÆ® Ã»¼Ò
+    // ê¸°ì¡´ ë¦¬ìŠ¤íŠ¸ ì²­ì†Œ
     ChampionListBox->ClearChildren();
 
-    // µ¥ÀÌÅÍ Å×ÀÌºíÀÇ ¸ğµç Row Name Á¤º¸ È®º¸
+    // ë°ì´í„° í…Œì´ë¸”ì˜ ëª¨ë“  Row Name ì •ë³´ í™•ë³´
     TArray<FName> RowNames = ChampionDataTable->GetRowNames();
 
     for (const FName& RowName : RowNames)
@@ -116,13 +110,13 @@ void UChampionSelectWidget::GenerateChampionList()
         FChampionStatRow* StatRow = ChampionDataTable->FindRow<FChampionStatRow>(RowName, TEXT(""));
         if (StatRow)
         {
-            // ½½·Ô À§Á¬ µ¿Àû »ı¼º
+            // ìŠ¬ë¡¯ ìœ„ì ¯ ë™ì  ìƒì„±
             UChampionSlotWidget* NewSlot = CreateWidget<UChampionSlotWidget>(GetOwningPlayer(), ChampionSlotClass);
             if (NewSlot)
             {
                 NewSlot->InitializeSlot(RowName, StatRow->CharacterIcon);
 
-                //  WrapBox ÀÚ½Ä¿¡ Ãß°¡
+                //  WrapBox ìì‹ì— ì¶”ê°€
                 ChampionListBox->AddChildToWrapBox(NewSlot);
             }
         }
@@ -141,18 +135,38 @@ void UChampionSelectWidget::RefreshSelectionUI()
     if (!LocalPC) return;
 
     ALOLPlayerState* MyPS = LocalPC->GetPlayerState<ALOLPlayerState>();
-    if (!MyPS) return; // Æ¨±è ¹æÁö ¾ÈÀüÀåÄ¡: ³» State°¡ ¾È ³Ñ¾î¿ÔÀ¸¸é Áß´Ü
+    if (!MyPS) return; // íŠ•ê¹€ ë°©ì§€ ì•ˆì „ì¥ì¹˜: ë‚´ Stateê°€ ì•ˆ ë„˜ì–´ì™”ìœ¼ë©´ ì¤‘ë‹¨
 
-    // ÇöÀç ¿ùµå¿¡ ÀÖ´Â ¸ğµç À¯ÀúÀÇ PlayerState¸¦ Á¶»ç
+    FString NetRoleStr = (LocalPC->GetNetMode() == NM_Client) ? TEXT("Client") : TEXT("Server(Host)");
+    FString MyTeamStr = (MyPS->GetTeam() == ETeam::Blue) ? TEXT("Blue") : TEXT("Red");
+    UE_LOG(LogTemp, Warning, TEXT("=== [UI Refresh Started] í™”ë©´ ì£¼ì¸: %s | ë‚´ íŒ€: %s ==="), *NetRoleStr, *MyTeamStr);
+
+    // ê¸°ë³¸ ìƒíƒœ ì´ˆê¸°í™”
+    if (BlueChampionImage) BlueChampionImage->SetOpacity(1.0f); // í˜¹ì€ ë””í´íŠ¸ í…ìŠ¤ì²˜
+    if (RedChampionImage) RedChampionImage->SetOpacity(1.0f);
+
+    // í˜„ì¬ ì›”ë“œì— ìˆëŠ” ëª¨ë“  ìœ ì €ì˜ PlayerStateë¥¼ ì¡°ì‚¬
     for (APlayerState* BasePS : GS->PlayerArray)
     {
         ALOLPlayerState* TargetPS = Cast<ALOLPlayerState>(BasePS);
         if (!TargetPS) continue;
 
-        FName SelectedRow = TargetPS->GetSelectedChampion();
-        UTexture2D* TargetIcon = nullptr;
+        if (TargetPS != MyPS)
+        {
+            UE_LOG(LogTemp, Verbose, TEXT("    => %s ìœ ì €ëŠ” ë‚´ê°€ ì•„ë‹ˆë¯€ë¡œ UI ë Œë”ë§ ìŠ¤í‚µí•©ë‹ˆë‹¤."), *TargetPS->GetPlayerName());
+            continue;
+        }
 
-        // °í¸¥ Ã¨ÇÇ¾ğÀÌ ÀÖ´Ù¸é µ¥ÀÌÅÍ Å×ÀÌºí¿¡¼­ ¾ÆÀÌÄÜ °Ë»ö
+        FString TargetTeamStr = (TargetPS->GetTeam() == ETeam::Blue) ? TEXT("Blue") : TEXT("Red");
+        UE_LOG(LogTemp, Log, TEXT(" -> ë£¨í”„ íƒìƒ‰ ì¤‘ì¸ ìœ ì €: %s | íŒ€: %s | ê³ ë¥¸ ì±”í”¼ì–¸: %s"),
+            *TargetPS->GetPlayerName(), *TargetTeamStr, *TargetPS->GetSelectedChampion().ToString());
+
+        // ë²„ê·¸ ì˜ì‹¬ ì§€ì  í•„í„°ë§
+
+        FName SelectedRow = TargetPS->GetSelectedChampion();
+
+        UTexture2D* TargetIcon = nullptr;
+        // ê³ ë¥¸ ì±”í”¼ì–¸ì´ ìˆë‹¤ë©´ ë°ì´í„° í…Œì´ë¸”ì—ì„œ ì•„ì´ì½˜ ê²€ìƒ‰
         if (!SelectedRow.IsNone() && ChampionDataTable)
         {
             FChampionStatRow* StatRow = ChampionDataTable->FindRow<FChampionStatRow>(SelectedRow, TEXT(""));
@@ -162,26 +176,36 @@ void UChampionSelectWidget::RefreshSelectionUI()
             }
         }
 
-        // ÇÇ¾Æ ½Äº° ÈÄ ¾Ë¸ÂÀº ÇÈÄ­ ÀÌ¹ÌÁö ÄÄÆ÷³ÍÆ®¿¡ ¼¼ÆÃ
-        if (TargetPS == MyPS)
+        if (!TargetIcon)
         {
-            if (BlueChampionImage && TargetIcon)
+            UE_LOG(LogTemp, Error, TEXT("    => [ì‹¤íŒ¨] ë‚´ê°€ ê³ ë¥¸ %s ì±”í”¼ì–¸ì˜ ì•„ì´ì½˜ì„ ë°ì´í„°í…Œì´ë¸”ì—ì„œ ì°¾ì§€ ëª»í–ˆìŠµë‹ˆë‹¤!"), *SelectedRow.ToString());
+            continue;
+        }
+
+        // í”¼ì•„ ì‹ë³„ í›„ ì•Œë§ì€ í”½ì¹¸ ì´ë¯¸ì§€ ì»´í¬ë„ŒíŠ¸ì— ì„¸íŒ…
+        if (TargetPS->GetTeam() == ETeam::Blue)
+        {
+            if (BlueChampionImage)
             {
+                UE_LOG(LogTemp, Warning, TEXT("    => [ë Œë”ë§] ë‚´ê°€ BlueíŒ€ì´ë¯€ë¡œ BlueChampionImageë¥¼ %s ì•„ì´ì½˜ìœ¼ë¡œ ë°”ê¿‰ë‹ˆë‹¤!"), *SelectedRow.ToString());
                 BlueChampionImage->SetColorAndOpacity(FLinearColor::White);
                 BlueChampionImage->SetBrushFromTexture(TargetIcon);
                 BlueChampionImage->SetOpacity(1.0f);
             }
         }
-        else // »ó´ë¹æ À¯ÀúÀÎ °æ¿ì
+        else if (TargetPS->GetTeam() == ETeam::Red)
         {
-            if (RedChampionImage && TargetIcon)
+            if (RedChampionImage)
             {
-                BlueChampionImage->SetColorAndOpacity(FLinearColor::White);
+                UE_LOG(LogTemp, Warning, TEXT("    => [ë Œë”ë§] ë‚´ê°€ RedíŒ€ì´ë¯€ë¡œ RedChampionImageë¥¼ %s ì•„ì´ì½˜ìœ¼ë¡œ ë°”ê¿‰ë‹ˆë‹¤!"), *SelectedRow.ToString());
+                RedChampionImage->SetColorAndOpacity(FLinearColor::White);
+                RedChampionImage->SetColorAndOpacity(FLinearColor::White);
                 RedChampionImage->SetBrushFromTexture(TargetIcon);
                 RedChampionImage->SetOpacity(1.0f);
             }
         }
     }
+    UE_LOG(LogTemp, Warning, TEXT("=== [UI Refresh Ended] ==="));
 }
 
 void UChampionSelectWidget::OnReadyClicked()
@@ -192,10 +216,10 @@ void UChampionSelectWidget::OnReadyClicked()
         {
             if (PS->GetSelectedChampion().IsNone()) return;
 
-            // ¼­¹ö¿¡ ÁØºñ ¿Ï·á
+            // ì„œë²„ì— ì¤€ë¹„ ì™„ë£Œ
             PS->Server_ReadyUp();
 
-            // Áßº¹ Å¬¸¯ ¹ê
+            // ì¤‘ë³µ í´ë¦­ ë°´
             ReadyButton->SetIsEnabled(false);
         }
     }

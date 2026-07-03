@@ -4,17 +4,22 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerState.h"
+
+
 #include "LOLPlayerState.generated.h"
+
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnPlayerSelectionChanged);
 
-UENUM()
+UENUM(BlueprintType)
 enum class ETeam : uint8
 {
 	None		UMETA(DisplayName = "None"),
 	Blue		UMETA(DisplayName = "BlueTeam"),
 	Red			UMETA(DisplayName = "RedTeam")
 };
+
+class ULOLGameInstance;
 
 /**
  * 
@@ -39,13 +44,18 @@ public:
 	// 고른 챔피언 데이터 테이블
 	UFUNCTION(BlueprintCallable, Server, Reliable, Category = "Select")
 	void C2S_SelectChampion(FName ChampionRowName);
+	void C2S_SelectChampion_Implementation(FName ChampionRowName);
 
 	UFUNCTION(BlueprintPure, Category = "Select")
 	FName GetSelectedChampion() const { return SelectedChampion; }
 
+	UFUNCTION(BlueprintCallable, Category = "Select")
+	void SetSelectedChampion(FName NewChampion) { if (HasAuthority()) SelectedChampion = NewChampion; }
+
 	// 준비 완료 상태 관리
 	UFUNCTION(BlueprintCallable, Server, Reliable, Category = "Select")
 	void Server_ReadyUp();
+	void Server_ReadyUp_Implementation();
 
 	UFUNCTION(BlueprintPure, Category = "Select")
 	bool IsReady() const { return bIsReady; }
@@ -64,6 +74,11 @@ protected:
 	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly, Category = "Select")
 	bool bIsReady;
 
-	UFUNCTION() void OnRep_Team();
-	UFUNCTION() void OnRep_SelectedChampion();
+	UFUNCTION() 
+	void OnRep_Team();
+	UFUNCTION() 
+	void OnRep_SelectedChampion();
+
+private:
+	void SaveToLocalGameInstance();
 };

@@ -30,6 +30,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stat")
 	TObjectPtr<UTexture2D> CharacterIcon;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Spawn")
+	TSubclassOf<APawn> ChampionPawnClass;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stat")
 	float AD;
 

@@ -4,10 +4,10 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/GameModeBase.h"
+#include "LOLPlayerState.h"
+
 #include "LOLGameMode.generated.h"
 
-
-DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnInGameMatchStarted);
 
 /**
  * 
@@ -20,19 +20,20 @@ class MYLEAGUEOFLEGENDS_API ALOLGameMode : public AGameModeBase
 public:
 	ALOLGameMode();
 
-	virtual void PostLogin(APlayerController* NewPlayer) override;
-
-	// 준비 체크
-	void CheckAllPlayersReady();
-
-	// 매치 시작 신호
-	UPROPERTY(BlueprintAssignable, Category = "Match")
-	FOnInGameMatchStarted OnInGameMatchStarted;
+	UFUNCTION(BlueprintCallable, Category = "Player")
+	void OnPlayerSubmittedSelection(APlayerController* InPC, ALOLPlayerState* InPS);
 
 protected:
-	// 챔 선택 이후 게임 시작
-	void StartInGameMatch();
-
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Setup")
 	UDataTable* ChampionDataTable;
+
+	void SpawnChampionForPlayer(APlayerController* InPC, ALOLPlayerState* InPS);
+
+	AActor* FindPlayerStartForTeam(ETeam Team);
+
+	int32 SpawnedPlayerCount = 0;
+
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Setup")
+	TArray<AActor*> BlueSpawnPoints;
 };

@@ -32,7 +32,9 @@ void UChampionSlotWidget::OnSlotClicked()
 	{
 		if (ALOLPlayerState* PS = PC->GetPlayerState<ALOLPlayerState>())
 		{
-			//UE_LOG(LogTemp, Warning, TEXT("Slot Clicked! Requesting: %s"), *TargetRowName.ToString());
+			UE_LOG(LogTemp, Warning, TEXT("[Slot Clicked] Requesting: %s | NetMode: %s"),
+				*TargetRowName.ToString(),
+				PC->GetNetMode() == NM_Client ? TEXT("Client") : TEXT("Server"));
 			PS->C2S_SelectChampion(TargetRowName);
 		}
 	}

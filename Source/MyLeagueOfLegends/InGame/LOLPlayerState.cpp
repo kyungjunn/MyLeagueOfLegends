@@ -3,6 +3,9 @@
 
 #include "LOLPlayerState.h"
 #include "Net/UnrealNetwork.h"
+#include "LOLGameMode.h"
+#include "Lobby/LobbyGameMode.h"
+#include "GameInstance/LOLGameInstance.h"
 
 ALOLPlayerState::ALOLPlayerState()
 {
@@ -40,18 +43,36 @@ void ALOLPlayerState::Server_ReadyUp_Implementation()
 	}
 	bIsReady = true;
 
-	//if (ALOLGameMode* GM = Cast<ALOLGameMode>(GetWorld()->GetAuthGameMode()))
-	//{
-	//	GM->CheckAllPlayersReady();
-	//}
+	if (ALobbyGameMode* LobbyGM = Cast<ALobbyGameMode>(GetWorld()->GetAuthGameMode()))
+	{
+		LobbyGM->CheckAllPlayersReady();
+	}
 }
 
 void ALOLPlayerState::OnRep_Team()
 {
 	OnSelectionChanged.Broadcast();
+	SaveToLocalGameInstance();
 }
 
 void ALOLPlayerState::OnRep_SelectedChampion()
 {
 	OnSelectionChanged.Broadcast();
+	SaveToLocalGameInstance();
+}
+
+void ALOLPlayerState::SaveToLocalGameInstance()
+{
+	// 이 PlayerState가 "내 컴퓨터의 내 캐릭터" 것인지 확인
+	APlayerController* LocalPC = GetWorld()->GetFirstPlayerController();
+	if (!LocalPC || LocalPC->PlayerState != this)
+	{
+		return; // 상대방 PlayerState면 무시
+	}
+
+	if (ULOLGameInstance* GI = GetWorld()->GetGameInstance<ULOLGameInstance>())
+	{
+		GI->SavedTeam = Team;
+		GI->SavedSelectedChampion = SelectedChampion;
+	}
 }

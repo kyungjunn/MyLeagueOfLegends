@@ -56,5 +56,6 @@ private:
 	void GenerateChampionList();
 
 	bool bEnemyBound = false;
+	bool bSelfBound = false;
 
 };
