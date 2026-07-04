@@ -26,5 +26,5 @@ public:
 
 protected:
 	UPROPERTY(EditAnywhere, Category = "Setup")
-	FString InGameLevelName = TEXT("/Game/Maps/InGame");
-};
+	FString InGameLevelName = TEXT("/Game/LOL/Maps/InGame");
+}; 
