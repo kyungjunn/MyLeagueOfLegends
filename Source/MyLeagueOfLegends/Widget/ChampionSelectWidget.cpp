@@ -3,6 +3,7 @@
 #include "Components/WrapBox.h"
 #include "Components/Button.h"
 #include "Components/Image.h"
+#include "Components/TextBlock.h"
 #include "Engine/DataTable.h"
 #include "ChampionSlotWidget.h"
 #include "InGame/LOLPlayerState.h"
@@ -141,7 +142,9 @@ void UChampionSelectWidget::RefreshSelectionUI()
     FString MyTeamStr = (MyPS->GetTeam() == ETeam::Blue) ? TEXT("Blue") : TEXT("Red");
     UE_LOG(LogTemp, Warning, TEXT("=== [UI Refresh Started] 화면 주인: %s | 내 팀: %s ==="), *NetRoleStr, *MyTeamStr);
 
-    // 기본 상태 초기화
+    // 기본 상태 초기화+
+    if (BluePlayerNameText) BluePlayerNameText->SetText(FText::FromString(TEXT("선택 중...")));
+    if (RedPlayerNameText) RedPlayerNameText->SetText(FText::FromString(TEXT("선택 중...")));
     if (BlueChampionImage) BlueChampionImage->SetOpacity(1.0f); // 혹은 디폴트 텍스처
     if (RedChampionImage) RedChampionImage->SetOpacity(1.0f);
 
@@ -164,6 +167,7 @@ void UChampionSelectWidget::RefreshSelectionUI()
         // 버그 의심 지점 필터링
 
         FName SelectedRow = TargetPS->GetSelectedChampion();
+        FString TargetName = TargetPS->GetPlayerName();
 
         UTexture2D* TargetIcon = nullptr;
         // 고른 챔피언이 있다면 데이터 테이블에서 아이콘 검색
@@ -185,6 +189,10 @@ void UChampionSelectWidget::RefreshSelectionUI()
         // 피아 식별 후 알맞은 픽칸 이미지 컴포넌트에 세팅
         if (TargetPS->GetTeam() == ETeam::Blue)
         {
+            if (BluePlayerNameText)
+            {
+                BluePlayerNameText->SetText(FText::FromString(TargetName));
+            }
             if (BlueChampionImage)
             {
                 UE_LOG(LogTemp, Warning, TEXT("    => [렌더링] 내가 Blue팀이므로 BlueChampionImage를 %s 아이콘으로 바꿉니다!"), *SelectedRow.ToString());
@@ -195,6 +203,10 @@ void UChampionSelectWidget::RefreshSelectionUI()
         }
         else if (TargetPS->GetTeam() == ETeam::Red)
         {
+            if (RedPlayerNameText)
+            {
+                RedPlayerNameText->SetText(FText::FromString(TargetName));
+            }
             if (RedChampionImage)
             {
                 UE_LOG(LogTemp, Warning, TEXT("    => [렌더링] 내가 Red팀이므로 RedChampionImage를 %s 아이콘으로 바꿉니다!"), *SelectedRow.ToString());

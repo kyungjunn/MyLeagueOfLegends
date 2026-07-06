@@ -8,7 +8,9 @@ public class MyLeagueOfLegends : ModuleRules
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 	
-		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "Niagara", "UMG"});
+		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "Niagara", "UMG"
+		, "HTTP", "Json", "JsonUtilities", "OnlineSubsystem"	, "OnlineSubsystemUtils"
+		, "Sockets", "Networking"});
 
 		PrivateDependencyModuleNames.AddRange(new string[] {  });
 

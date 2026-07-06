@@ -19,6 +19,10 @@ class MYLEAGUEOFLEGENDS_API ALobbyPlayerController : public APlayerController
 protected:
 	virtual void BeginPlay() override;
 
+	UFUNCTION(Server, Reliable, Category = "Account")
+	void Server_SetNickname(const FString& Nickname);
+	void Server_SetNickname_Implementat(const FString& Nickname);
+
 	UPROPERTY(EditDefaultsOnly, Category = "UI")
 	TSubclassOf<UChampionSelectWidget> ChampionSelectWidgetClass;
 

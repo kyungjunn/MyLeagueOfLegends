@@ -9,6 +9,7 @@
 class UWrapBox;
 class UButton;
 class UImage;
+class UTextBlock;
 class UChampionSlotWidget;
 class UDataTable;
 
@@ -37,6 +38,12 @@ protected:
 
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UImage> RedChampionImage;
+
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UTextBlock> BluePlayerNameText;
+
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UTextBlock> RedPlayerNameText;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Setup")
 	TObjectPtr<UDataTable> ChampionDataTable;
