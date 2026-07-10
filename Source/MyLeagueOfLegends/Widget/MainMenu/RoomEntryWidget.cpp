@@ -14,10 +14,16 @@ void URoomEntryWidget::NativeConstruct()
 void URoomEntryWidget::SetupEntry(const FRoomInfo& InRoomInfo)
 {
 	TargetSearchIndex = InRoomInfo.SearchResultIndex;
+	ULOLGameInstance* GI = GetGameInstance<ULOLGameInstance>();
 
 	if (RoomNameText)
 	{
 		RoomNameText->SetText(FText::FromString(InRoomInfo.RoomName));
+	}
+
+	if (NicknameText)
+	{
+		NicknameText->SetText(FText::FromString(InRoomInfo.HostNickname));
 	}
 
 	if (PlayerCountText)

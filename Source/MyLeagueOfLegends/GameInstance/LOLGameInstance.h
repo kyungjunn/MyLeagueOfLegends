@@ -23,6 +23,9 @@ struct FRoomInfo
 	FString RoomName;
 
 	UPROPERTY(BlueprintReadOnly)
+	FString HostNickname;
+
+	UPROPERTY(BlueprintReadOnly)
 	int32 CurrentPlayers = 0;
 
 	UPROPERTY(BlueprintReadOnly)
@@ -97,4 +100,5 @@ private:
 	FDelegateHandle JoinSessionDelegateHandle;
 
 	static const FName RoomNameSettingsKey; // 세션에 방 이름을 저장할 커스텀 키
+	static const FName HostNicknameSettingsKey;
 };

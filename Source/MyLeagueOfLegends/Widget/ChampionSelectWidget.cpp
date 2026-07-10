@@ -23,28 +23,51 @@ void UChampionSelectWidget::NativeConstruct()
     GenerateChampionList();
 
     // PlayerState의 변경 이벤트 구독
-    APlayerController* PC = GetOwningPlayer();
-    if (PC)
+    //APlayerController* PC = GetOwningPlayer();
+    //if (PC)
+    //{
+    //    if (ALOLPlayerState* MyPS = PC->GetPlayerState<ALOLPlayerState>())
+    //    {
+    //        MyPS->OnSelectionChanged.AddDynamic(this, &UChampionSelectWidget::RefreshSelectionUI);
+    //    }
+    //}
+    //bSelfBound = false;
+    //bEnemyBound = false;
+
+    UWorld* World = GetWorld();
+    if (World)
     {
-        if (ALOLPlayerState* MyPS = PC->GetPlayerState<ALOLPlayerState>())
-        {
-            MyPS->OnSelectionChanged.AddDynamic(this, &UChampionSelectWidget::RefreshSelectionUI);
-        }
+        World->GetTimerManager().SetTimer(BindingTimerHandle, this, &UChampionSelectWidget::TryBindPlayerStates, 0.2f, true);
     }
 
-    bSelfBound = false;
-    bEnemyBound = false;
     RefreshSelectionUI();
 }
 
 void UChampionSelectWidget::NativeDestruct()
 {
     // 메모리 누수 방지를 위한 언바인딩
-    if (APlayerController* PC = GetOwningPlayer())
+    /*if (APlayerController* PC = GetOwningPlayer())
     {
         if (ALOLPlayerState* MyPS = PC->GetPlayerState<ALOLPlayerState>())
         {
             MyPS->OnSelectionChanged.RemoveDynamic(this, &UChampionSelectWidget::RefreshSelectionUI);
+        }
+    }*/
+    UWorld* World = GetWorld();
+    if (World)
+    {
+        World->GetTimerManager().ClearTimer(BindingTimerHandle);
+    }
+
+    // GameState를 순회하며 걸려있는 모든 델리게이트 안전하게 해제
+    if (World && World->GetGameState())
+    {
+        for (APlayerState* BasePS : World->GetGameState()->PlayerArray)
+        {
+            if (ALOLPlayerState* TargetPS = Cast<ALOLPlayerState>(BasePS))
+            {
+                TargetPS->OnSelectionChanged.RemoveDynamic(this, &UChampionSelectWidget::RefreshSelectionUI);
+            }
         }
     }
     Super::NativeDestruct();
@@ -54,45 +77,82 @@ void UChampionSelectWidget::NativeTick(const FGeometry& MyGeometry, float InDelt
 {
     Super::NativeTick(MyGeometry, InDeltaTime);
 
-    APlayerController* LocalPC = GetOwningPlayer();
+    //APlayerController* LocalPC = GetOwningPlayer();
 
     // 자기 자신 바인딩 폴링
-    if (!bSelfBound && LocalPC)
+    //if (!bSelfBound && LocalPC)
+    //{
+    //    if (ALOLPlayerState* MyPS = LocalPC->GetPlayerState<ALOLPlayerState>())
+    //    {
+    //        MyPS->OnSelectionChanged.AddDynamic(this, &UChampionSelectWidget::RefreshSelectionUI);
+    //        bSelfBound = true;
+    //        UE_LOG(LogTemp, Warning, TEXT("[SelfBind] 성공"));
+    //        RefreshSelectionUI();
+    //    }
+    //}
+
+    // 상대방 바인딩 폴링
+    //if (!bEnemyBound)
+    //{
+    //    UWorld* World = GetWorld();
+    //    AGameStateBase* GS = World ? World->GetGameState() : nullptr;
+    //    if (GS && LocalPC)
+    //    {
+    //        for (APlayerState* BasePS : GS->PlayerArray)
+    //        {
+    //            // 드디어 네트워크 선을 타고 상대방 PlayerState 패킷이 내 컴퓨터 월드에 안착했다면!
+    //            if (BasePS && BasePS != LocalPC->PlayerState)
+    //            {
+    //                if (ALOLPlayerState* EnemyPS = Cast<ALOLPlayerState>(BasePS))
+    //                {
+    //                    // 안전하게 동적 바인딩 성공 시키고 루프 탈출
+    //                    EnemyPS->OnSelectionChanged.AddDynamic(this, &UChampionSelectWidget::RefreshSelectionUI);
+    //                    bEnemyBound = true;
+
+    //                    // 바인딩 성공했으니 UI 즉시 한 번 새로고침
+    //                    RefreshSelectionUI();
+    //                    break;
+    //                }
+    //            }
+    //        }
+    //    }
+    //}
+}
+
+void UChampionSelectWidget::TryBindPlayerStates()
+{
+    UWorld* World = GetWorld();
+    AGameStateBase* GS = World ? World->GetGameState() : nullptr;
+    if (!GS) return;
+
+    bool bAllBound = true;
+    APlayerController* LocalPC = GetOwningPlayer();
+    if (!LocalPC) return;
+
+    // 현재 방에 있는 인원 수만큼 동적 델리게이트를 걸어줍니다.
+    for (APlayerState* BasePS : GS->PlayerArray)
     {
-        if (ALOLPlayerState* MyPS = LocalPC->GetPlayerState<ALOLPlayerState>())
+        if (ALOLPlayerState* TargetPS = Cast<ALOLPlayerState>(BasePS))
         {
-            MyPS->OnSelectionChanged.AddDynamic(this, &UChampionSelectWidget::RefreshSelectionUI);
-            bSelfBound = true;
-            UE_LOG(LogTemp, Warning, TEXT("[SelfBind] 성공"));
-            RefreshSelectionUI();
+            // 이미 등록되어 있다면 중복 등록 안 됨 (Ensure 에러 방지)
+            if (!TargetPS->OnSelectionChanged.IsAlreadyBound(this, &UChampionSelectWidget::RefreshSelectionUI))
+            {
+                TargetPS->OnSelectionChanged.AddDynamic(this, &UChampionSelectWidget::RefreshSelectionUI);
+                UE_LOG(LogTemp, Log, TEXT("[%s] 델리게이트 바인딩 성공!"), *TargetPS->GetPlayerName());
+            }
+        }
+        else
+        {
+            // 아직 네트워킹 지연 때문에 PlayerState가 완전히 로딩 안 되었다면 다음 타이머 주기에 재시도
+            bAllBound = false;
         }
     }
 
-    // 상대방 바인딩 폴링
-    if (!bEnemyBound)
+    // 모두 안전하게 바인딩 완료되었다면 타이머 해제
+    if (bAllBound && GS->PlayerArray.Num() >= 2) // 최소 2명 이상 잡혔을 때 타이머 종료 규칙
     {
-        UWorld* World = GetWorld();
-        AGameStateBase* GS = World ? World->GetGameState() : nullptr;
-        if (GS && LocalPC)
-        {
-            for (APlayerState* BasePS : GS->PlayerArray)
-            {
-                // 드디어 네트워크 선을 타고 상대방 PlayerState 패킷이 내 컴퓨터 월드에 안착했다면!
-                if (BasePS && BasePS != LocalPC->PlayerState)
-                {
-                    if (ALOLPlayerState* EnemyPS = Cast<ALOLPlayerState>(BasePS))
-                    {
-                        // 안전하게 동적 바인딩 성공 시키고 루프 탈출
-                        EnemyPS->OnSelectionChanged.AddDynamic(this, &UChampionSelectWidget::RefreshSelectionUI);
-                        bEnemyBound = true;
-
-                        // 바인딩 성공했으니 UI 즉시 한 번 새로고침
-                        RefreshSelectionUI();
-                        break;
-                    }
-                }
-            }
-        }
+        World->GetTimerManager().ClearTimer(BindingTimerHandle);
+        RefreshSelectionUI();
     }
 }
 
@@ -142,7 +202,7 @@ void UChampionSelectWidget::RefreshSelectionUI()
     FString MyTeamStr = (MyPS->GetTeam() == ETeam::Blue) ? TEXT("Blue") : TEXT("Red");
     UE_LOG(LogTemp, Warning, TEXT("=== [UI Refresh Started] 화면 주인: %s | 내 팀: %s ==="), *NetRoleStr, *MyTeamStr);
 
-    // 기본 상태 초기화+
+    // 기본 상태 초기화
     if (BluePlayerNameText) BluePlayerNameText->SetText(FText::FromString(TEXT("선택 중...")));
     if (RedPlayerNameText) RedPlayerNameText->SetText(FText::FromString(TEXT("선택 중...")));
     if (BlueChampionImage) BlueChampionImage->SetOpacity(1.0f); // 혹은 디폴트 텍스처
@@ -156,15 +216,14 @@ void UChampionSelectWidget::RefreshSelectionUI()
 
         if (TargetPS != MyPS)
         {
-            UE_LOG(LogTemp, Verbose, TEXT("    => %s 유저는 내가 아니므로 UI 렌더링 스킵합니다."), *TargetPS->GetPlayerName());
+            //UE_LOG(LogTemp, Verbose, TEXT("    => %s 유저는 내가 아니므로 UI 렌더링 스킵합니다."), *TargetPS->GetPlayerName());
             continue;
         }
 
-        FString TargetTeamStr = (TargetPS->GetTeam() == ETeam::Blue) ? TEXT("Blue") : TEXT("Red");
-        UE_LOG(LogTemp, Log, TEXT(" -> 루프 탐색 중인 유저: %s | 팀: %s | 고른 챔피언: %s"),
-            *TargetPS->GetPlayerName(), *TargetTeamStr, *TargetPS->GetSelectedChampion().ToString());
+        //FString TargetTeamStr = (TargetPS->GetTeam() == ETeam::Blue) ? TEXT("Blue") : TEXT("Red");
+        //UE_LOG(LogTemp, Log, TEXT(" -> 루프 탐색 중인 유저: %s | 팀: %s | 고른 챔피언: %s"),
+        //    *TargetPS->GetPlayerName(), *TargetTeamStr, *TargetPS->GetSelectedChampion().ToString());
 
-        // 버그 의심 지점 필터링
 
         FName SelectedRow = TargetPS->GetSelectedChampion();
         FString TargetName = TargetPS->GetPlayerName();
@@ -182,7 +241,7 @@ void UChampionSelectWidget::RefreshSelectionUI()
 
         if (!TargetIcon)
         {
-            UE_LOG(LogTemp, Error, TEXT("    => [실패] 내가 고른 %s 챔피언의 아이콘을 데이터테이블에서 찾지 못했습니다!"), *SelectedRow.ToString());
+            //UE_LOG(LogTemp, Error, TEXT("    => [실패] 내가 고른 %s 챔피언의 아이콘을 데이터테이블에서 찾지 못했습니다!"), *SelectedRow.ToString());
             continue;
         }
 
@@ -195,7 +254,7 @@ void UChampionSelectWidget::RefreshSelectionUI()
             }
             if (BlueChampionImage)
             {
-                UE_LOG(LogTemp, Warning, TEXT("    => [렌더링] 내가 Blue팀이므로 BlueChampionImage를 %s 아이콘으로 바꿉니다!"), *SelectedRow.ToString());
+                //UE_LOG(LogTemp, Warning, TEXT("    => [렌더링] 내가 Blue팀이므로 BlueChampionImage를 %s 아이콘으로 바꿉니다!"), *SelectedRow.ToString());
                 BlueChampionImage->SetColorAndOpacity(FLinearColor::White);
                 BlueChampionImage->SetBrushFromTexture(TargetIcon);
                 BlueChampionImage->SetOpacity(1.0f);
@@ -209,7 +268,7 @@ void UChampionSelectWidget::RefreshSelectionUI()
             }
             if (RedChampionImage)
             {
-                UE_LOG(LogTemp, Warning, TEXT("    => [렌더링] 내가 Red팀이므로 RedChampionImage를 %s 아이콘으로 바꿉니다!"), *SelectedRow.ToString());
+                //UE_LOG(LogTemp, Warning, TEXT("    => [렌더링] 내가 Red팀이므로 RedChampionImage를 %s 아이콘으로 바꿉니다!"), *SelectedRow.ToString());
                 RedChampionImage->SetColorAndOpacity(FLinearColor::White);
                 RedChampionImage->SetColorAndOpacity(FLinearColor::White);
                 RedChampionImage->SetBrushFromTexture(TargetIcon);

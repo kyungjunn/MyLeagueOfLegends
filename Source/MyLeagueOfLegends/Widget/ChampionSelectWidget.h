@@ -65,4 +65,9 @@ private:
 	bool bEnemyBound = false;
 	bool bSelfBound = false;
 
+	// 주기적으로 PlayerState 안착을 감시할 타이머 핸들
+	FTimerHandle BindingTimerHandle;
+
+	// 타이머가 호출할 바인딩 함수
+	void TryBindPlayerStates();
 };

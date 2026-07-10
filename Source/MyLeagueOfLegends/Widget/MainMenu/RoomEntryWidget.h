@@ -29,6 +29,9 @@ protected:
 	TObjectPtr<UTextBlock> RoomNameText;
 
 	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UTextBlock> NicknameText;
+
+	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UTextBlock> PlayerCountText; // 예: "1 / 2" 형태로 표시
 
 	UPROPERTY(meta = (BindWidget))
@@ -40,4 +43,5 @@ private:
 
 	// 세션 탐색 결과 배열의 몇 번째 인덱스인지 저장
 	int32 TargetSearchIndex = -1;
+
 };

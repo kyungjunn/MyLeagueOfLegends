@@ -8,6 +8,7 @@
 #include "Kismet/GameplayStatics.h"
 
 const FName ULOLGameInstance::RoomNameSettingsKey(TEXT("ROOM_NAME"));
+const FName ULOLGameInstance::HostNicknameSettingsKey(TEXT("HOST_NICKNAME"));
 
 void ULOLGameInstance::Init()
 {
@@ -24,6 +25,7 @@ IOnlineSessionPtr ULOLGameInstance::GetSessionInterface() const
 
 void ULOLGameInstance::CreateRoom(const FString& RoomName, int32 MaxPlayers)
 {
+
 	IOnlineSessionPtr Sessions = GetSessionInterface();
 	if (!Sessions.IsValid())
 	{
@@ -46,6 +48,7 @@ void ULOLGameInstance::CreateRoom(const FString& RoomName, int32 MaxPlayers)
 	SessionSettings->bAllowJoinViaPresence = false;
 	SessionSettings->bIsDedicated = false;
 	SessionSettings->Set(RoomNameSettingsKey, RoomName, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
+	SessionSettings->Set(HostNicknameSettingsKey, UserNickname, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
 
 	CreateSessionDelegateHandle = Sessions->AddOnCreateSessionCompleteDelegate_Handle(
 		FOnCreateSessionCompleteDelegate::CreateUObject(this, &ULOLGameInstance::OnCreateSessionComplete));
@@ -79,7 +82,7 @@ void ULOLGameInstance::FindRooms()
 		OnJoinRoomFailed.Broadcast(TEXT("Online subsystem is valid."));
 		return;
 	}
-
+ 
 	if (SessionSearch.IsValid() && SessionSearch->SearchState == EOnlineAsyncTaskState::InProgress)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("already session searching"));
@@ -114,6 +117,7 @@ void ULOLGameInstance::OnFindSessionsComplete(bool bWasSuccessful)
 		{
 			const FOnlineSessionSearchResult& Result = Results[i];
 
+			// 세션에서 방 이름 꺼내오기
 			FString RoomName;
 			Result.Session.SessionSettings.Get(RoomNameSettingsKey, RoomName);
 			if (RoomName.IsEmpty())
@@ -121,8 +125,17 @@ void ULOLGameInstance::OnFindSessionsComplete(bool bWasSuccessful)
 				RoomName = FString::Printf(TEXT("Room %d"), i + 1);
 			}
 
+			// 세션에서 호스트 이름 꺼내오기
+			FString HostNickname;
+			Result.Session.SessionSettings.Get(HostNicknameSettingsKey, HostNickname);
+			if (HostNickname.IsEmpty())
+			{
+				HostNickname = TEXT("Unknown");
+			}
+
 			FRoomInfo Info;
 			Info.RoomName = RoomName;
+			Info.HostNickname = HostNickname;
 			Info.MaxPlayers = Result.Session.SessionSettings.NumPublicConnections;
 			Info.CurrentPlayers = Info.MaxPlayers - Result.Session.NumOpenPublicConnections;
 			Info.SearchResultIndex = i;

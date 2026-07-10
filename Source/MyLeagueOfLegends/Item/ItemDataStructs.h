@@ -42,7 +42,7 @@ struct FItemData : public FTableRowBase
     GENERATED_BODY()
 
 public:
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item") FText Name;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item") FName Name;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item") TObjectPtr<UTexture2D> Image;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item") int32 Price = 0;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item") EItemType Type = EItemType::Normal;
