@@ -34,28 +34,28 @@ public:
 	TSubclassOf<APawn> ChampionPawnClass;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stat")
-	float AD;
+	float AD = 0.0f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stat")
-	float AP;
+	float AP = 0.0f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stat")
-	float Defense;
+	float Defense = 0.0f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stat")
-	float APDefense;
+	float APDefense = 0.0f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stat")
-	float MaxHP;
+	float MaxHP = 0.0f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stat")
-	float MaxMP;
+	float MaxMP = 0.0f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stat")
-	float MoveSpeed;
+	float MoveSpeed = 0.0f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stat")
-	float AttackRate;
+	float AttackRate = 0.0f;
 };
 
 UCLASS( Blueprintable, ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
