@@ -21,12 +21,14 @@
 void UAuthClient::Login(const FString& UserId, const FString& Password)
 {
 	// 본인의 C++ 백엔드 서버 IP와 ListenPort(9000)를 입력하세요.
-	RequestLogin(TEXT("127.0.0.1"), 9000, UserId, Password);
+	//RequestLogin(TEXT("127.0.0.1"), 9000, UserId, Password);
+	RequestLogin(TEXT("192.168.0.97"), 9000, UserId, Password);
 }
 
 void UAuthClient::Signup(const FString& UserId, const FString& Password, const FString& Nickname)
 {
-	RequestSignup(TEXT("127.0.0.1"), 9000, UserId, Password, Nickname);
+	//RequestSignup(TEXT("127.0.0.1"), 9000, UserId, Password, Nickname);
+	RequestSignup(TEXT("192.168.0.97"), 9000, UserId, Password, Nickname);
 }
 
 bool UAuthClient::ConnectToServer(const FString& ServerIP, int32 Port)
