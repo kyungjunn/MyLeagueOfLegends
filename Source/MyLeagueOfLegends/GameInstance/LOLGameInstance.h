@@ -13,7 +13,7 @@
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnRoomListUpdated);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnJoinRoomFailed, const FString&, Reason);
 
-// ¹æ ¸ñ·Ï UI¿¡ »Ñ¸®±â À§ÇÑ ÃÖ¼Ò Á¤º¸
+// ï¿½ï¿½ ï¿½ï¿½ï¿½ UIï¿½ï¿½ ï¿½Ñ¸ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Ö¼ï¿½ ï¿½ï¿½ï¿½ï¿½
 USTRUCT(BlueprintType)
 struct FRoomInfo
 {
@@ -46,7 +46,7 @@ class MYLEAGUEOFLEGENDS_API ULOLGameInstance : public UGameInstance
 public:
 	virtual void Init() override;
 
-	// ================= °èÁ¤ Á¤º¸ =================
+	// ================= ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ =================
 	UPROPERTY(BlueprintReadOnly, Category = "Account")
 	FString UserId;
 
@@ -54,25 +54,31 @@ public:
 	FString UserNickname;
 
 
-	// ================= Ã¨ÇÇ¾ð ¼±ÅÃ -> ÀÎ°ÔÀÓ Àü´Þ¿ë =================
+	// ================= Ã¨ï¿½Ç¾ï¿½ ï¿½ï¿½ï¿½ï¿½ -> ï¿½Î°ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Þ¿ï¿½ =================
 	UPROPERTY(BlueprintReadWrite, Category = "Lobby")
 	FName SavedSelectedChampion = NAME_None;
 
 	UPROPERTY(BlueprintReadWrite, Category = "Lobby")
 	ETeam SavedTeam = ETeam::None;
 
-	// ================= ¹æ(¼¼¼Ç) °ü¸® =================
-	// ¹æÀåÀÌ "¹æ ¸¸µé±â"¸¦ ´­·¶À» ¶§ È£Ãâ (L_Lobby?listen À¸·Î ÀÌµ¿)
+	// ================= ï¿½ï¿½(ï¿½ï¿½ï¿½ï¿½) ï¿½ï¿½ï¿½ï¿½ =================
+	// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ "ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½"ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ È£ï¿½ï¿½ (L_Lobby?listen ï¿½ï¿½ï¿½ï¿½ ï¿½Ìµï¿½)
 	UFUNCTION(BlueprintCallable, Category = "Session")
 	void CreateRoom(const FString& RoomName, int32 MaxPlayers = 2);
 
-	// ¹æ ¸ñ·Ï »õ·Î°íÄ§
+	// ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Î°ï¿½Ä§
 	UFUNCTION(BlueprintCallable, Category = "Session")
 	void FindRooms();
 
-	// ¹æ ¸ñ·Ï¿¡¼­ Æ¯Á¤ ÀÎµ¦½º¸¦ °ñ¶ó Âü°¡
+	// ï¿½ï¿½ ï¿½ï¿½Ï¿ï¿½ï¿½ï¿½ Æ¯ï¿½ï¿½ ï¿½Îµï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 	UFUNCTION(BlueprintCallable, Category = "Session")
 	void JoinRoomByIndex(int32 SearchResultIndex);
+
+	// Reads RoomName back out of the current session (NAME_GameSession) settings.
+	// Used to know which chat room to join at Champion Select. Works for both the
+	// host and joiners, since RoomName is advertised on the session.
+	UFUNCTION(BlueprintCallable, Category = "Session")
+	bool GetCurrentRoomName(FString& OutRoomName) const;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Session")
 	TArray<FRoomInfo> RoomList;
@@ -99,6 +105,6 @@ private:
 	FDelegateHandle FindSessionsDelegateHandle;
 	FDelegateHandle JoinSessionDelegateHandle;
 
-	static const FName RoomNameSettingsKey; // ¼¼¼Ç¿¡ ¹æ ÀÌ¸§À» ÀúÀåÇÒ Ä¿½ºÅÒ Å°
+	static const FName RoomNameSettingsKey; // ï¿½ï¿½ï¿½Ç¿ï¿½ ï¿½ï¿½ ï¿½Ì¸ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Ä¿ï¿½ï¿½ï¿½ï¿½ Å°
 	static const FName HostNicknameSettingsKey;
 };

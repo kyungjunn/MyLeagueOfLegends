@@ -1,34 +1,36 @@
-﻿#include "Network/AuthClient.h"
+#include "Network/AuthClient.h"
 #include "SocketSubsystem.h"
 #include "Interfaces/IPv4/IPv4Address.h"
 #include "Serialization/JsonSerializer.h"
 #include "Dom/JsonObject.h"
 #include "TimerManager.h"
 
-//void UAuthClient::Initialize(FSubsystemCollectionBase& Collection)
-//{
-//	Super::Initialize(Collection);
-//	ConnectionSocket = nullptr;
-//}
-//
-//void UAuthClient::Deinitialize()
-//{
-//	CloseConnection();
-//	Super::Deinitialize();
-//}
+void UAuthClient::Initialize(FSubsystemCollectionBase& Collection)
+{
+	Super::Initialize(Collection);
+	ConnectionSocket = nullptr;
+}
+
+void UAuthClient::Deinitialize()
+{
+	// 로그인 이후에도 소켓을 계속 열어두는 구조라, 게임 인스턴스 종료 시 여기서 정리해주지 않으면
+	// TCP 연결이 그대로 남는다.
+	CloseConnection();
+	Super::Deinitialize();
+}
 
 // 편의를 위해 매번 서버 정보를 칠 필요 없이 디폴트 IP/포트로 연결해주는 래퍼
 void UAuthClient::Login(const FString& UserId, const FString& Password)
 {
 	// 본인의 C++ 백엔드 서버 IP와 ListenPort(9000)를 입력하세요.
-	//RequestLogin(TEXT("127.0.0.1"), 9000, UserId, Password);
-	RequestLogin(TEXT("192.168.0.97"), 9000, UserId, Password);
+	RequestLogin(TEXT("127.0.0.1"), 9000, UserId, Password);
+	//RequestLogin(TEXT("192.168.0.97"), 9000, UserId, Password);
 }
 
 void UAuthClient::Signup(const FString& UserId, const FString& Password, const FString& Nickname)
 {
-	//RequestSignup(TEXT("127.0.0.1"), 9000, UserId, Password, Nickname);
-	RequestSignup(TEXT("192.168.0.97"), 9000, UserId, Password, Nickname);
+	RequestSignup(TEXT("127.0.0.1"), 9000, UserId, Password, Nickname);
+	//RequestSignup(TEXT("192.168.0.97"), 9000, UserId, Password, Nickname);
 }
 
 bool UAuthClient::ConnectToServer(const FString& ServerIP, int32 Port)
@@ -77,6 +79,9 @@ void UAuthClient::CloseConnection()
 		ISocketSubsystem::Get(PLATFORM_SOCKETSUBSYSTEM)->DestroySocket(ConnectionSocket);
 		ConnectionSocket = nullptr;
 	}
+
+	bIsAuthenticated = false;
+	CurrentRoomName.Empty();
 }
 
 void UAuthClient::RequestLogin(const FString& ServerIP, int32 Port, const FString& UserId, const FString& Password)
@@ -87,17 +92,12 @@ void UAuthClient::RequestLogin(const FString& ServerIP, int32 Port, const FStrin
 		return;
 	}
 
-	// 서버 데이터 구조와 완벽 매칭되도록 패킷 정보 구성 ("type", "id", "password")
+	// opcode(LOGIN_REQUEST)가 이제 메시지 종류를 나타내므로, JSON 본문에는 실제 필드만 담음
 	TSharedPtr<FJsonObject> JsonObject = MakeShareable(new FJsonObject());
-	JsonObject->SetStringField(TEXT("type"), TEXT("LOGIN_REQUEST"));
 	JsonObject->SetStringField(TEXT("id"), UserId);
 	JsonObject->SetStringField(TEXT("password"), Password);
 
-	FString OutputString;
-	TSharedRef<TJsonWriter<>> Writer = TJsonWriterFactory<>::Create(&OutputString);
-	FJsonSerializer::Serialize(JsonObject.ToSharedRef(), Writer);
-
-	SendJsonString(OutputString);
+	SendPacket(EPacketOpcode::LoginRequest, JsonObject.ToSharedRef());
 }
 
 void UAuthClient::RequestSignup(const FString& ServerIP, int32 Port, const FString& UserId, const FString& Password, const FString& Nickname)
@@ -109,41 +109,91 @@ void UAuthClient::RequestSignup(const FString& ServerIP, int32 Port, const FStri
 	}
 
 	TSharedPtr<FJsonObject> JsonObject = MakeShareable(new FJsonObject());
-	JsonObject->SetStringField(TEXT("type"), TEXT("REGISTER_REQUEST"));
 	JsonObject->SetStringField(TEXT("id"), UserId);
 	JsonObject->SetStringField(TEXT("password"), Password);
 	JsonObject->SetStringField(TEXT("nickname"), Nickname);
 
-	FString OutputString;
-	TSharedRef<TJsonWriter<>> Writer = TJsonWriterFactory<>::Create(&OutputString);
-	FJsonSerializer::Serialize(JsonObject.ToSharedRef(), Writer);
-
-	SendJsonString(OutputString);
+	SendPacket(EPacketOpcode::RegisterRequest, JsonObject.ToSharedRef());
 }
 
-bool UAuthClient::SendJsonString(const FString& JsonString)
+void UAuthClient::JoinChatRoom(const FString& RoomName)
+{
+	if (!bIsAuthenticated || !ConnectionSocket)
+	{
+		OnAuthError.Broadcast(TEXT("not authenticated"));
+		return;
+	}
+
+	TSharedPtr<FJsonObject> JsonObject = MakeShareable(new FJsonObject());
+	JsonObject->SetStringField(TEXT("roomName"), RoomName);
+
+	SendPacket(EPacketOpcode::ChatJoinRoom, JsonObject.ToSharedRef());
+}
+
+void UAuthClient::LeaveChatRoom(const FString& RoomName)
+{
+	if (!bIsAuthenticated || !ConnectionSocket)
+	{
+		OnAuthError.Broadcast(TEXT("not authenticated"));
+		return;
+	}
+
+	TSharedPtr<FJsonObject> JsonObject = MakeShareable(new FJsonObject());
+	JsonObject->SetStringField(TEXT("roomName"), RoomName);
+
+	SendPacket(EPacketOpcode::ChatLeaveRoom, JsonObject.ToSharedRef());
+}
+
+void UAuthClient::SendChatMessage(const FString& RoomName, const FString& Message)
+{
+	if (!bIsAuthenticated || !ConnectionSocket)
+	{
+		OnAuthError.Broadcast(TEXT("not authenticated"));
+		return;
+	}
+
+	TSharedPtr<FJsonObject> JsonObject = MakeShareable(new FJsonObject());
+	JsonObject->SetStringField(TEXT("roomName"), RoomName);
+	JsonObject->SetStringField(TEXT("message"), Message);
+
+	SendPacket(EPacketOpcode::ChatMessage, JsonObject.ToSharedRef());
+}
+
+bool UAuthClient::SendPacket(EPacketOpcode Opcode, const TSharedRef<FJsonObject>& Body)
 {
 	if (!ConnectionSocket) return false;
 
-	// 1. JSON 문자열을 UTF-8 바이트 배열로 변환합니다.
-	FTCHARToUTF8 Converter(*JsonString);
-	uint32 BodyLength = static_cast<uint32>(Converter.Length());
+	// 1. JSON 본문을 UTF-8 바이트 배열로 직렬화합니다.
+	FString OutputString;
+	TSharedRef<TJsonWriter<>> Writer = TJsonWriterFactory<>::Create(&OutputString);
+	FJsonSerializer::Serialize(Body, Writer);
 
-	if (BodyLength == 0) return false;
+	FTCHARToUTF8 Converter(*OutputString);
+	const uint32 BodyLength = static_cast<uint32>(Converter.Length());
 
-	// 2. 서버의 'ntohl()' 규약에 맞춰 길이를 빅 엔디안(Network Byte Order)으로 직렬화합니다.
-	uint8 Header[4];
-	Header[0] = static_cast<uint8>((BodyLength >> 24) & 0xFF);
-	Header[1] = static_cast<uint8>((BodyLength >> 16) & 0xFF);
-	Header[2] = static_cast<uint8>((BodyLength >> 8) & 0xFF);
-	Header[3] = static_cast<uint8>(BodyLength & 0xFF);
+	// 2. [4B 길이][2B opcode][JSON body] 프레임을 조립합니다.
+	//    길이는 opcode(2B) + body 길이의 합 (길이 필드 자신은 포함하지 않음) -- 서버의
+	//    Protocol::PacketFramer와 동일한 규약.
+	const uint16 OpcodeValue = static_cast<uint16>(Opcode);
+	const uint32 TotalLength = 2 + BodyLength;
 
-	// 3. 총 전송 버퍼 조립 (헤더 4바이트 + 본문 데이터)
 	TArray<uint8> PacketBuffer;
-	PacketBuffer.Append(Header, 4);
-	PacketBuffer.Append(reinterpret_cast<const uint8*>(Converter.Get()), BodyLength);
+	PacketBuffer.Reserve(4 + TotalLength);
 
-	// 4. 서버로 한번에 스트림 전송
+	PacketBuffer.Add(static_cast<uint8>((TotalLength >> 24) & 0xFF));
+	PacketBuffer.Add(static_cast<uint8>((TotalLength >> 16) & 0xFF));
+	PacketBuffer.Add(static_cast<uint8>((TotalLength >> 8) & 0xFF));
+	PacketBuffer.Add(static_cast<uint8>(TotalLength & 0xFF));
+
+	PacketBuffer.Add(static_cast<uint8>((OpcodeValue >> 8) & 0xFF));
+	PacketBuffer.Add(static_cast<uint8>(OpcodeValue & 0xFF));
+
+	if (BodyLength > 0)
+	{
+		PacketBuffer.Append(reinterpret_cast<const uint8*>(Converter.Get()), BodyLength);
+	}
+
+	// 3. 서버로 한번에 스트림 전송
 	int32 BytesSent = 0;
 	return ConnectionSocket->Send(PacketBuffer.GetData(), PacketBuffer.Num(), BytesSent);
 }
@@ -156,7 +206,7 @@ void UAuthClient::PollSocketData()
 	// 읽을 데이터가 존재하고, 최소 헤더 크기(4바이트) 이상 쌓였을 때만 처리 시작
 	if (ConnectionSocket->HasPendingData(PendingDataSize) && PendingDataSize >= 4)
 	{
-		// 1. 먼저 헤더 4바이트만 훔쳐봐서 데이터 전체 크기를 읽어냅니다. (Peek 모드)
+		// 1. 먼저 헤더 4바이트만 훔쳐봐서 (opcode + body) 전체 크기를 읽어냅니다. (Peek 모드)
 		TArray<uint8> HeaderBuffer;
 		HeaderBuffer.SetNum(4);
 		int32 BytesRead = 0;
@@ -164,63 +214,131 @@ void UAuthClient::PollSocketData()
 		if (ConnectionSocket->Recv(HeaderBuffer.GetData(), 4, BytesRead, ESocketReceiveFlags::Peek))
 		{
 			// 빅엔디안 헤더를 정수로 복원
-			uint32 BodyLength = (static_cast<uint32>(HeaderBuffer[0]) << 24) |
+			const uint32 TotalLength = (static_cast<uint32>(HeaderBuffer[0]) << 24) |
 				(static_cast<uint32>(HeaderBuffer[1]) << 16) |
 				(static_cast<uint32>(HeaderBuffer[2]) << 8) |
 				static_cast<uint32>(HeaderBuffer[3]);
 
-			// 2. 전체 패킷(헤더 4바이트 + 데이터 본문 크기)이 버퍼에 다 쌓였는지 확인합니다.
-			if (PendingDataSize >= (4 + BodyLength))
+			// 2. 전체 패킷(헤더 4바이트 + opcode 2바이트 + JSON 본문)이 버퍼에 다 쌓였는지 확인합니다.
+			if (TotalLength >= 2 && PendingDataSize >= (4 + TotalLength))
 			{
 				// 완전히 다 왔다면 Peek가 아닌 실제 수신(Recv)으로 버퍼를 비워냅니다.
 				TArray<uint8> FullPacketBuffer;
-				FullPacketBuffer.SetNum(4 + BodyLength);
+				FullPacketBuffer.SetNum(4 + TotalLength);
 
 				if (ConnectionSocket->Recv(FullPacketBuffer.GetData(), FullPacketBuffer.Num(), BytesRead))
 				{
-					// 헤더 4바이트 뒤에 있는 순수 JSON 데이터만 추출
+					// 헤더 4바이트 뒤의 2바이트가 opcode, 그 뒤가 JSON 본문
+					const uint16 OpcodeValue = (static_cast<uint16>(FullPacketBuffer[4]) << 8) |
+						static_cast<uint16>(FullPacketBuffer[5]);
+
+					const int32 JsonBodyLength = static_cast<int32>(TotalLength) - 2;
 					TArray<uint8> JsonBytes;
-					JsonBytes.Append(FullPacketBuffer.GetData() + 4, BodyLength);
+					JsonBytes.Append(FullPacketBuffer.GetData() + 6, JsonBodyLength);
 					JsonBytes.Add(0); // C-스타일 스트링을 위한 널 종료 문자
 
-					FString ReceivedString = FString(UTF8_TO_TCHAR((const char*)JsonBytes.GetData()));
+					const FString ReceivedString = FString(UTF8_TO_TCHAR((const char*)JsonBytes.GetData()));
 
 					// 최종 문자열 파싱 처리
-					ProcessReceivedPacket(ReceivedString);
+					ProcessReceivedPacket(static_cast<EPacketOpcode>(OpcodeValue), ReceivedString);
 				}
 			}
 		}
 	}
 }
 
-void UAuthClient::ProcessReceivedPacket(const FString& JsonData)
+void UAuthClient::ProcessReceivedPacket(EPacketOpcode Opcode, const FString& JsonData)
 {
 	TSharedPtr<FJsonObject> JsonObject;
 	TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(JsonData);
 
-	if (FJsonSerializer::Deserialize(Reader, JsonObject) && JsonObject.IsValid())
+	if (!FJsonSerializer::Deserialize(Reader, JsonObject) || !JsonObject.IsValid())
 	{
-		FString Type = JsonObject->GetStringField(TEXT("type"));
+		return;
+	}
 
-		if (Type == TEXT("LOGIN_RESPONSE"))
+	switch (Opcode)
+	{
+	case EPacketOpcode::LoginResponse:
+	{
+		const bool bSuccess = JsonObject->GetBoolField(TEXT("success"));
+		const FString Nickname = JsonObject->GetStringField(TEXT("nickname"));
+		const FString ErrorMessage = JsonObject->GetStringField(TEXT("errorMessage"));
+
+		if (bSuccess)
 		{
-			bool bSuccess = JsonObject->GetBoolField(TEXT("success"));
-			FString Nickname = JsonObject->GetStringField(TEXT("nickname"));
-			FString ErrorMessage = JsonObject->GetStringField(TEXT("errorMessage"));
-
-			// 위젯단으로 결과 전파
-			OnLoginResult.Broadcast(bSuccess, Nickname, bSuccess ? TEXT("Login Success!") : ErrorMessage);
-
-			// 로그인 이후 게임 루프로 넘어가므로 소켓 세션을 정리해 줍니다.
-			CloseConnection();
+			bIsAuthenticated = true;
 		}
-		else if (Type == TEXT("REGISTER_RESPONSE"))
+
+		// 위젯단으로 결과 전파
+		OnLoginResult.Broadcast(bSuccess, Nickname, bSuccess ? TEXT("Login Success!") : ErrorMessage);
+
+		// 로그인 성공 시에는 소켓을 닫지 않음 -- 같은 연결을 이어서 방 채팅에 사용하기 위함.
+		break;
+	}
+	case EPacketOpcode::RegisterResponse:
+	{
+		const bool bSuccess = JsonObject->GetBoolField(TEXT("success"));
+		const FString ErrorMessage = JsonObject->GetStringField(TEXT("errorMessage"));
+
+		OnSignupResult.Broadcast(bSuccess, bSuccess ? TEXT("Signup Completed") : ErrorMessage);
+
+		// 회원가입 시점에는 아직 로그인 상태가 아니라 소켓을 열어둘 이유가 없으므로 기존처럼 정리.
+		CloseConnection();
+		break;
+	}
+	case EPacketOpcode::ChatJoinRoomResponse:
+	{
+		const bool bSuccess = JsonObject->GetBoolField(TEXT("success"));
+		const FString RoomName = JsonObject->GetStringField(TEXT("roomName"));
+		const FString ErrorMessage = JsonObject->GetStringField(TEXT("errorMessage"));
+
+		if (bSuccess)
 		{
-			bool bSuccess = JsonObject->GetBoolField(TEXT("success"));
-			FString ErrorMessage = JsonObject->GetStringField(TEXT("errorMessage"));
-
-			OnSignupResult.Broadcast(bSuccess, bSuccess ? TEXT("Signup Completed") : ErrorMessage);
-			CloseConnection();
+			CurrentRoomName = RoomName;
 		}
+
+		OnChatJoinRoomResult.Broadcast(bSuccess, RoomName, ErrorMessage);
+		break;
+	}
+	case EPacketOpcode::ChatLeaveRoomResponse:
+	{
+		const bool bSuccess = JsonObject->GetBoolField(TEXT("success"));
+		const FString RoomName = JsonObject->GetStringField(TEXT("roomName"));
+
+		if (bSuccess && CurrentRoomName == RoomName)
+		{
+			CurrentRoomName.Empty();
+		}
+
+		OnChatLeaveRoomResult.Broadcast(bSuccess, RoomName);
+		break;
+	}
+	case EPacketOpcode::ChatMessageBroadcast:
+	{
+		const FString RoomName = JsonObject->GetStringField(TEXT("roomName"));
+		const FString Sender = JsonObject->GetStringField(TEXT("sender"));
+		const FString Message = JsonObject->GetStringField(TEXT("message"));
+		const FString Timestamp = JsonObject->GetStringField(TEXT("timestamp"));
+
+		OnChatMessageReceived.Broadcast(RoomName, Sender, Message, Timestamp);
+		break;
+	}
+	case EPacketOpcode::ChatSystemMessage:
+	{
+		const FString RoomName = JsonObject->GetStringField(TEXT("roomName"));
+		const FString Message = JsonObject->GetStringField(TEXT("message"));
+
+		OnChatSystemMessage.Broadcast(RoomName, Message);
+		break;
+	}
+	case EPacketOpcode::ErrorResponse:
+	{
+		const FString ErrorMessage = JsonObject->GetStringField(TEXT("errorMessage"));
+		OnAuthError.Broadcast(ErrorMessage);
+		break;
+	}
+	default:
+		break;
 	}
 }

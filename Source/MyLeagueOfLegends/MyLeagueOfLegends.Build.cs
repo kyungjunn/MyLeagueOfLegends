@@ -12,9 +12,9 @@ public class MyLeagueOfLegends : ModuleRules
 		, "HTTP", "Json", "JsonUtilities", "OnlineSubsystem"	, "OnlineSubsystemUtils"
 		, "Sockets", "Networking"});
 
-		PrivateDependencyModuleNames.AddRange(new string[] {  });
+		PrivateDependencyModuleNames.AddRange(new string[] { "Slate", "SlateCore" });
 
-		// ³» ¸ðµâÀÇ ¸ðµç ÇÏÀ§ Æú´õ °æ·Î¸¦ ÀÎÅ¬·çµå °æ·Î¿¡ Æ÷ÇÔ
+		// ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Î¸ï¿½ ï¿½ï¿½Å¬ï¿½ï¿½ï¿½ ï¿½ï¿½Î¿ï¿½ ï¿½ï¿½ï¿½ï¿½
 		PublicIncludePaths.Add(ModuleDirectory);
 
 		// Uncomment if you are using Slate UI

@@ -5,24 +5,32 @@
 #include "CoreMinimal.h"
 #include "Subsystems/GameInstanceSubsystem.h"
 #include "Sockets.h"
+#include "Network/PacketOpcodes.h"
 #include "AuthClient.generated.h"
 
 /**
- * 
+ *
  */
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FOnLoginResult, bool, bSuccess, const FString&, Nickname, const FString&, Message);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnSignupResult, bool, bSuccess, const FString&, Message);
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FOnChatJoinRoomResult, bool, bSuccess, const FString&, RoomName, const FString&, ErrorMessage);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnChatLeaveRoomResult, bool, bSuccess, const FString&, RoomName);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_FourParams(FOnChatMessageReceived, const FString&, RoomName, const FString&, Sender, const FString&, Message, const FString&, Timestamp);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnChatSystemMessage, const FString&, RoomName, const FString&, Message);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnAuthError, const FString&, ErrorMessage);
+
 UCLASS(BlueprintType)
 class MYLEAGUEOFLEGENDS_API UAuthClient : public UGameInstanceSubsystem
 {
 	GENERATED_BODY()
-	
+
 public:
-	// ¼­ºê½Ã½ºÅÛ ÃÊ±âÈ­/ÇØÁ¦ ¶óÀÌÇÁ»çÀÌÅ¬ (ÇÊ¿ä ½Ã ±¸Çö, ¿©±â¼± ±âº» Á¦°ø »ç¿ë)
-	virtual void Initialize(FSubsystemCollectionBase& Collection) override { Super::Initialize(Collection); }
-	virtual void Deinitialize() override { Super::Deinitialize(); }
+	// ì„œë¸Œì‹œìŠ¤í…œ ì´ˆê¸°í™”/í•´ì œ ë¼ì´í”„ì‚¬ì´í´. ë¡œê·¸ì¸ ì´í›„ì—ë„ ì†Œì¼“ì„ ê³„ì† ë“¤ê³  ìˆì„ ìˆ˜ ìˆìœ¼ë¯€ë¡œ,
+	// ê²Œì„ ì¸ìŠ¤í„´ìŠ¤ ì¢…ë£Œ ì‹œ Deinitializeì—ì„œ ë°˜ë“œì‹œ ì†Œì¼“ì„ ì •ë¦¬í•´ì•¼ í•¨.
+	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
+	virtual void Deinitialize() override;
 
 	UPROPERTY(BlueprintAssignable, Category = "Auth")
 	FOnLoginResult OnLoginResult;
@@ -30,29 +38,59 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "Auth")
 	FOnSignupResult OnSignupResult;
 
-	// ±âÁ¸ LoginWidget¿¡¼­ ¾²´ø ÇüÅÂ¿¡ ¸ÂÃç ÇïÆÛ ÇÔ¼ö Á¤ÀÇ
+	UPROPERTY(BlueprintAssignable, Category = "Chat")
+	FOnChatJoinRoomResult OnChatJoinRoomResult;
+
+	UPROPERTY(BlueprintAssignable, Category = "Chat")
+	FOnChatLeaveRoomResult OnChatLeaveRoomResult;
+
+	UPROPERTY(BlueprintAssignable, Category = "Chat")
+	FOnChatMessageReceived OnChatMessageReceived;
+
+	UPROPERTY(BlueprintAssignable, Category = "Chat")
+	FOnChatSystemMessage OnChatSystemMessage;
+
+	UPROPERTY(BlueprintAssignable, Category = "Auth")
+	FOnAuthError OnAuthError;
+
+	// ê¸°ì¡´ LoginWidgetì—ì„œ ë§¤ë²ˆ ì„œë²„ ì •ë³´ë¥¼ ì¹  í•„ìš” ì—†ì´ ë””í´íŠ¸ IP/í¬íŠ¸ë¡œ ì—°ê²°í•´ì£¼ëŠ” ë˜í¼
 	void Login(const FString& UserId, const FString& Password);
 	void Signup(const FString& UserId, const FString& Password, const FString& Nickname);
 
-	// ·Î±×ÀÎ ¿äÃ»
+	// ë¡œê·¸ì¸ ìš”ì²­
 	UFUNCTION(BlueprintCallable, Category = "Auth")
 	void RequestLogin(const FString& ServerIP, int32 Port, const FString& UserId, const FString& Password);
 
-	// È¸¿ø°¡ÀÔ ¿äÃ»
+	// íšŒì›ê°€ì… ìš”ì²­
 	UFUNCTION(BlueprintCallable, Category = "Auth")
 	void RequestSignup(const FString& ServerIP, int32 Port, const FString& UserId, const FString& Password, const FString& Nickname);
 
+	// ë¡œê·¸ì¸ ì„±ê³µ í›„ ê°™ì€ ì†Œì¼“ìœ¼ë¡œ ë°© ì±„íŒ…ì— ì°¸ê°€/í‡´ì¥/ë©”ì‹œì§€ ì „ì†¡.
+	// ë¡œê·¸ì¸ë˜ì§€ ì•Šì€ ìƒíƒœì—ì„œ í˜¸ì¶œí•˜ë©´ OnAuthErrorë§Œ ë¸Œë¡œë“œìºìŠ¤íŠ¸í•˜ê³  ì•„ë¬´ê²ƒë„ ë³´ë‚´ì§€ ì•ŠìŒ
+	// (ì„œë²„ë„ ì–´ì°¨í”¼ ì¸ì¦ ìƒíƒœë¥¼ ì¬ê²€ì¦í•˜ë¯€ë¡œ, ì´ê±´ ë°©ì–´ì  ì²´í¬ì¼ ë¿).
+	UFUNCTION(BlueprintCallable, Category = "Chat")
+	void JoinChatRoom(const FString& RoomName);
+
+	UFUNCTION(BlueprintCallable, Category = "Chat")
+	void LeaveChatRoom(const FString& RoomName);
+
+	UFUNCTION(BlueprintCallable, Category = "Chat")
+	void SendChatMessage(const FString& RoomName, const FString& Message);
+
 private:
-	// ¼­¹ö¿ÍÀÇ TCP ¼ÒÄÏ ¼¼¼Ç °ü¸®
+	// ì„œë²„ì™€ì˜ TCP ì—°ê²° ì†Œì¼“ ì •ë³´
 	FSocket* ConnectionSocket;
 
-	// ºñµ¿±â·Î ¼­¹ö ÀÀ´ä ÆĞÅ¶À» ¼ö½ÅÇÏ±â À§ÇÑ ½º·¹µå/Å¸ÀÌ¸Ó Ç®¸µ¿ë ÇÔ¼ö
+	// ë¹„ë™ê¸°ë¡œ ì˜¤ëŠ” ì„œë²„ ì‘ë‹µ íŒ¨í‚·ì„ ìˆ˜ì‹ í•˜ê¸° ìœ„í•œ í´ë§/íƒ€ì´ë¨¸ í’€ë§ìš© í•¨ìˆ˜
 	FTimerHandle SocketPollTimerHandle;
 	void PollSocketData();
 
-	// µ¥ÀÌÅÍ ¼Û¼ö½Å ÇïÆÛ ÇÔ¼ö
+	// ì—°ê²°ê³¼ ì†¡ìˆ˜ì‹  ê´€ë ¨ í•¨ìˆ˜
 	bool ConnectToServer(const FString& ServerIP, int32 Port);
 	void CloseConnection();
-	bool SendJsonString(const FString& JsonString);
-	void ProcessReceivedPacket(const FString& JsonData);
+	bool SendPacket(EPacketOpcode Opcode, const TSharedRef<FJsonObject>& Body);
+	void ProcessReceivedPacket(EPacketOpcode Opcode, const FString& JsonData);
+
+	bool bIsAuthenticated = false;
+	FString CurrentRoomName;
 };
