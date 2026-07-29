@@ -66,6 +66,14 @@ private:
 	// 위치 지정 대시/이동 메커니즘 스킬 함수 (이즈 E, 비점멸 이동 등)
 	void ExecuteDashSkill(class USkillDataAsset* SkillData, const FVector& TargetLocation);
 
+	// 시전 후 이동 방향 회전 복구용 타이머
+	void ScheduleOrientRestore(class USkillDataAsset* SkillData);
+	void RestoreOrientRotation();
+	FTimerHandle OrientRestoreTimerHandle;
+
+	// 서버 기준 월드 시간 (클라/서버 쿨타임 동기화)
+	float GetServerTime() const;
+
 protected:
 	// 스킬별로 언제 쿨타임이 끝나는지 기록
 	UPROPERTY(Replicated)

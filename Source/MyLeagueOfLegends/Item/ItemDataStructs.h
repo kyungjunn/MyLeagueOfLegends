@@ -52,3 +52,30 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item") FText Description;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item") FItemStat ItemStat; // 위에서 만든 스탯 구조체 중첩
 };
+
+// 4. 인벤토리 한 칸 (기존 BP ST_InventorySlot 대체)
+// 아이템 원본이 아니라 데이터 테이블 행 이름 + 개수만 보관하고, 필요 시 DataTable에서 조회한다.
+USTRUCT(BlueprintType)
+struct FInventorySlot
+{
+    GENERATED_BODY()
+
+public:
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Inventory") FName Name; // None = 빈 칸
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Inventory") int32 Amount = 0;
+
+    // 빈 칸 여부
+    bool IsEmpty() const { return Name.IsNone() || Amount <= 0; }
+};
+
+// 5. 아이템 추가/구매 결과 (UI 메시지용)
+UENUM(BlueprintType)
+enum class EInventoryAddResult : uint8
+{
+    Success         UMETA(DisplayName = "Success"),
+    InventoryFull   UMETA(DisplayName = "Inventory Full"),
+    MaxStackReached UMETA(DisplayName = "Max Stack Reached"),
+    AlreadyOwned    UMETA(DisplayName = "Already Owned"),
+    NotEnoughGold   UMETA(DisplayName = "Not Enough Gold"),
+    InvalidItem     UMETA(DisplayName = "Invalid Item")
+};

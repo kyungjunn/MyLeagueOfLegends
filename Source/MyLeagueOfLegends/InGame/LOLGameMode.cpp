@@ -8,6 +8,8 @@
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/PlayerStart.h"
 #include "EngineUtils.h"
+#include "GameFramework/GameStateBase.h"
+#include "TimerManager.h"
 
 ALOLGameMode::ALOLGameMode()
 {
@@ -25,6 +27,9 @@ void ALOLGameMode::OnPlayerSubmittedSelection(APlayerController* InPC, ALOLPlaye
 			GS->bMatchStarted = true;
 			GS->OnRep_MatchStarted();
 		}
+
+		// 매치 시작 시 초당 패시브 골드 지급 시작 (서버 전용)
+		GetWorldTimerManager().SetTimer(GoldIncomeTimerHandle, this, &ALOLGameMode::GrantPassiveGold, GoldTickInterval, true);
 	}
 }
 
@@ -79,4 +84,22 @@ AActor* ALOLGameMode::FindPlayerStartForTeam(ETeam Team)
 		}
 	}
 	return nullptr;
+}
+
+// 초당 전원에게 패시브 골드 지급 (GameMode는 서버에만 존재)
+void ALOLGameMode::GrantPassiveGold()
+{
+	AGameStateBase* GS = GetGameState<AGameStateBase>();
+	if (!GS)
+	{
+		return;
+	}
+
+	for (APlayerState* PS : GS->PlayerArray)
+	{
+		if (ALOLPlayerState* LOLPS = Cast<ALOLPlayerState>(PS))
+		{
+			LOLPS->AddGold(GoldPerTick);
+		}
+	}
 }

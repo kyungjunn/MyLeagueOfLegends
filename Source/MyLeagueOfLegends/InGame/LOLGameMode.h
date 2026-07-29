@@ -33,6 +33,17 @@ protected:
 
 	int32 SpawnedPlayerCount = 0;
 
+	// ===== ∆–Ω√∫Í ∞ÒµÂ (√ ¥Á »πµÊ) =====
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gold")
+	float GoldTickInterval = 1.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gold")
+	int32 GoldPerTick = 1;
+
+	FTimerHandle GoldIncomeTimerHandle;
+
+	void GrantPassiveGold();
+
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Setup")
 	TArray<AActor*> BlueSpawnPoints;

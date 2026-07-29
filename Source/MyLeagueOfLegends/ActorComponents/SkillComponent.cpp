@@ -5,6 +5,9 @@
 #include "DataAssets/SkillDataAsset.h"
 #include "Projectile/ProjectileBase.h"
 #include "Net/UnrealNetwork.h"
+#include "GameFramework/GameStateBase.h"
+#include "TimerManager.h"
+#include "Animation/AnimMontage.h"
 
 #include "Components/CapsuleComponent.h"
 #include "Projectile/NonTargetProjectile.h"
@@ -55,7 +58,7 @@ bool USkillComponent::IsSkillOnCooldown(ESkillType SkillType)
 	case ESkillType::R: EndTime = R_CooldownEndTime; 
 		break;
 	}
-	return GetWorld()->GetTimeSeconds() < EndTime;
+	return GetServerTime() < EndTime;
 }
 
 // 남은 시간 계산 (UI용)
@@ -69,16 +72,16 @@ float USkillComponent::GetSkillRemainingCooldown(ESkillType SkillType)
 	switch (SkillType)
 	{
 	case ESkillType::Q:
-		return Q_CooldownEndTime - GetWorld()->GetTimeSeconds();
+		return Q_CooldownEndTime - GetServerTime();
 		break;
 	case ESkillType::W:
-		return W_CooldownEndTime - GetWorld()->GetTimeSeconds();
+		return W_CooldownEndTime - GetServerTime();
 		break;
 	case ESkillType::E:
-		return E_CooldownEndTime - GetWorld()->GetTimeSeconds();
+		return E_CooldownEndTime - GetServerTime();
 		break;
 	case ESkillType::R:
-		return R_CooldownEndTime - GetWorld()->GetTimeSeconds();
+		return R_CooldownEndTime - GetServerTime();
 		break;
 	}
 
@@ -114,21 +117,10 @@ void USkillComponent::RequestUseSkill(ESkillType SkillType, const FVector& Targe
 		}
 	}
 
-	// 클라이언트일 때만 예측
-	if (Owner && !Owner->HasAuthority())
+	// 로컬 시전 애니메이션 시간 동안 회전 고정, 이후 타이머로 복구
+	if (SkillSlots.Contains(SkillType) && SkillSlots[SkillType])
 	{
-		// 클라이언트 로컬 반응성을 위해 미리 예측하여 쿨타임 반영
-		if (SkillSlots.Contains(SkillType) && SkillSlots[SkillType])
-		{
-			float PredictEndTime = GetWorld()->GetTimeSeconds() + SkillSlots[SkillType]->CoolDown;
-			switch (SkillType)
-			{
-			case ESkillType::Q: Q_CooldownEndTime = PredictEndTime; break;
-			case ESkillType::W: W_CooldownEndTime = PredictEndTime; break;
-			case ESkillType::E: E_CooldownEndTime = PredictEndTime; break;
-			case ESkillType::R: R_CooldownEndTime = PredictEndTime; break;
-			}
-		}
+		ScheduleOrientRestore(SkillSlots[SkillType]);
 	}
 
 	C2S_UseSkill(SkillType, TargetLocation);
@@ -137,6 +129,16 @@ void USkillComponent::RequestUseSkill(ESkillType SkillType, const FVector& Targe
 // 서버 실행
 bool USkillComponent::C2S_UseSkill_Validate(ESkillType SkillType, const FVector& TargetLocation)
 {
+	// 조작된 패킷 차단: 좌표가 유한한 값이고 스킬 종류가 유효한지 검증
+	if (TargetLocation.ContainsNaN())
+	{
+		return false;
+	}
+	if (SkillType != ESkillType::Q && SkillType != ESkillType::W
+		&& SkillType != ESkillType::E && SkillType != ESkillType::R)
+	{
+		return false;
+	}
 	return true;
 }
 void USkillComponent::C2S_UseSkill_Implementation(ESkillType SkillType, const FVector& TargetLocation)
@@ -155,7 +157,7 @@ void USkillComponent::C2S_UseSkill_Implementation(ESkillType SkillType, const FV
 		return; // 핵 유저라면 여기서 차단당함
 	}
 
-	float NewEndTime = GetWorld()->GetTimeSeconds() + ActiveSkillData->CoolDown;
+	float NewEndTime = GetServerTime() + ActiveSkillData->CoolDown;
 	switch (SkillType)
 	{
 	case ESkillType::Q: Q_CooldownEndTime = NewEndTime; break;
@@ -206,6 +208,9 @@ void USkillComponent::C2S_UseSkill_Implementation(ESkillType SkillType, const FV
 		break;
 
 	}
+
+	// 시전 애니메이션 시간 동안 회전 고정, 이후 타이머로 복구 (서버 권위)
+	ScheduleOrientRestore(ActiveSkillData);
 
 	// 멀티캐스트 애니메이션, 이펙트
 	S2M_SKillEffect(SkillType);
@@ -345,8 +350,40 @@ void USkillComponent::S2M_SKillEffect_Implementation(ESkillType SkillType)
 		return;
 	}
 
-	if (SkillData || SkillData->SkillMontage)
+	if (SkillData && SkillData->SkillMontage)
 	{
 		Owner->PlayAnimMontage(SkillData->SkillMontage);
 	}
+}
+
+// 시전 시간(몽타주 길이) 후 이동 방향 회전 복구 예약
+void USkillComponent::ScheduleOrientRestore(USkillDataAsset* SkillData)
+{
+	float Duration = (SkillData && SkillData->SkillMontage)
+		? SkillData->SkillMontage->GetPlayLength()
+		: 0.2f;
+
+	GetWorld()->GetTimerManager().SetTimer(
+		OrientRestoreTimerHandle, this, &USkillComponent::RestoreOrientRotation, Duration, false);
+}
+
+void USkillComponent::RestoreOrientRotation()
+{
+	if (ACharacter* Owner = Cast<ACharacter>(GetOwner()))
+	{
+		if (UCharacterMovementComponent* Move = Owner->GetCharacterMovement())
+		{
+			Move->bOrientRotationToMovement = true;
+		}
+	}
+}
+
+// 서버 기준 월드 시간 반환 (클라/서버 쿨타임 동기화)
+float USkillComponent::GetServerTime() const
+{
+	if (const AGameStateBase* GS = GetWorld()->GetGameState())
+	{
+		return GS->GetServerWorldTimeSeconds();
+	}
+	return GetWorld()->GetTimeSeconds();
 }

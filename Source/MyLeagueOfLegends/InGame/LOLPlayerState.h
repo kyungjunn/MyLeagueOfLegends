@@ -10,6 +10,7 @@
 
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnPlayerSelectionChanged);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnGoldChanged, int32, NewGold);
 
 UENUM(BlueprintType)
 enum class ETeam : uint8
@@ -64,6 +65,19 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "Select|Events")
 	FOnPlayerSelectionChanged OnSelectionChanged;
 
+	// ===== 골드 (서버 권위) =====
+	UPROPERTY(BlueprintAssignable, Category = "Gold|Events")
+	FOnGoldChanged OnGoldChanged;
+
+	UFUNCTION(BlueprintPure, Category = "Gold")
+	int32 GetGold() const { return Gold; }
+
+	// 서버 전용: 골드 차감(부족하면 false). 인벤토리 구매에서 호출
+	bool SpendGold(int32 Amount);
+
+	// 서버 전용: 골드 획득/환급
+	void AddGold(int32 Amount);
+
 protected:
 	UPROPERTY(ReplicatedUsing = OnRep_Team, VisibleAnywhere, BlueprintReadOnly, Category = "Team")
 	ETeam Team;
@@ -74,10 +88,20 @@ protected:
 	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly, Category = "Select")
 	bool bIsReady;
 
+	UPROPERTY(ReplicatedUsing = OnRep_Gold, VisibleAnywhere, BlueprintReadOnly, Category = "Gold")
+	int32 Gold;
+
+	// 시작 골드 (에디터에서 조절 가능)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Gold")
+	int32 InitialGold = 500;
+
 	UFUNCTION() 
 	void OnRep_Team();
 	UFUNCTION() 
 	void OnRep_SelectedChampion();
+
+	UFUNCTION()
+	void OnRep_Gold();
 
 private:
 	void SaveToLocalGameInstance();
