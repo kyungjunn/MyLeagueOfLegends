@@ -125,25 +125,25 @@ bool UAuthClient::SendJsonString(const FString& JsonString)
 {
 	if (!ConnectionSocket) return false;
 
-	// 1. JSON 문자열을 UTF-8 바이트 배열로 변환합니다.
+	// JSON 문자열을 UTF-8 바이트 배열 변환.
 	FTCHARToUTF8 Converter(*JsonString);
 	uint32 BodyLength = static_cast<uint32>(Converter.Length());
 
 	if (BodyLength == 0) return false;
 
-	// 2. 서버의 'ntohl()' 규약에 맞춰 길이를 빅 엔디안(Network Byte Order)으로 직렬화합니다.
+	// 2. 서버의 맞춰 길이를 빅엔디안 직렬화
 	uint8 Header[4];
 	Header[0] = static_cast<uint8>((BodyLength >> 24) & 0xFF);
 	Header[1] = static_cast<uint8>((BodyLength >> 16) & 0xFF);
 	Header[2] = static_cast<uint8>((BodyLength >> 8) & 0xFF);
 	Header[3] = static_cast<uint8>(BodyLength & 0xFF);
 
-	// 3. 총 전송 버퍼 조립 (헤더 4바이트 + 본문 데이터)
+	// 총 전송 버퍼 조립 (헤더 4바이트 + 본문 데이터)
 	TArray<uint8> PacketBuffer;
 	PacketBuffer.Append(Header, 4);
 	PacketBuffer.Append(reinterpret_cast<const uint8*>(Converter.Get()), BodyLength);
 
-	// 4. 서버로 한번에 스트림 전송
+	// 서버로 한번에 스트림 전송
 	int32 BytesSent = 0;
 	return ConnectionSocket->Send(PacketBuffer.GetData(), PacketBuffer.Num(), BytesSent);
 }
@@ -156,7 +156,7 @@ void UAuthClient::PollSocketData()
 	// 읽을 데이터가 존재하고, 최소 헤더 크기(4바이트) 이상 쌓였을 때만 처리 시작
 	if (ConnectionSocket->HasPendingData(PendingDataSize) && PendingDataSize >= 4)
 	{
-		// 1. 먼저 헤더 4바이트만 훔쳐봐서 데이터 전체 크기를 읽어냅니다. (Peek 모드)
+		// 먼저 헤더 4바이트만 훔쳐봐서 데이터 전체 크기 읽기. (Peek 모드)
 		TArray<uint8> HeaderBuffer;
 		HeaderBuffer.SetNum(4);
 		int32 BytesRead = 0;
@@ -169,10 +169,10 @@ void UAuthClient::PollSocketData()
 				(static_cast<uint32>(HeaderBuffer[2]) << 8) |
 				static_cast<uint32>(HeaderBuffer[3]);
 
-			// 2. 전체 패킷(헤더 4바이트 + 데이터 본문 크기)이 버퍼에 다 쌓였는지 확인합니다.
+			// 전체 패킷(헤더 4바이트 + 데이터 본문 크기)이 버퍼에 다 쌓였는지 확인.
 			if (PendingDataSize >= (4 + BodyLength))
 			{
-				// 완전히 다 왔다면 Peek가 아닌 실제 수신(Recv)으로 버퍼를 비워냅니다.
+				// 완전히 다 왔다면 Peek가 아닌 실제 Recv으로 버퍼 비우기.
 				TArray<uint8> FullPacketBuffer;
 				FullPacketBuffer.SetNum(4 + BodyLength);
 
@@ -181,7 +181,7 @@ void UAuthClient::PollSocketData()
 					// 헤더 4바이트 뒤에 있는 순수 JSON 데이터만 추출
 					TArray<uint8> JsonBytes;
 					JsonBytes.Append(FullPacketBuffer.GetData() + 4, BodyLength);
-					JsonBytes.Add(0); // C-스타일 스트링을 위한 널 종료 문자
+					JsonBytes.Add(0); 
 
 					FString ReceivedString = FString(UTF8_TO_TCHAR((const char*)JsonBytes.GetData()));
 
