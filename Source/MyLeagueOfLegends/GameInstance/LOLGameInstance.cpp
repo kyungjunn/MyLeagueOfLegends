@@ -15,7 +15,7 @@ void ULOLGameInstance::Init()
 	Super::Init();
 }
 
-// ================= ¹æ(¼¼¼Ç) =================
+// ================= ï¿½ï¿½(ï¿½ï¿½ï¿½ï¿½) =================
 
 IOnlineSessionPtr ULOLGameInstance::GetSessionInterface() const
 {
@@ -33,7 +33,7 @@ void ULOLGameInstance::CreateRoom(const FString& RoomName, int32 MaxPlayers)
 		return;
 	}
 
-	// ±âÁ¸ ¼¼¼ÇÀÌ ÀÖÀ¸¸é ¸ÕÀú Á¤¸®
+	// ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 	if (Sessions->GetNamedSession(NAME_GameSession))
 	{
 		Sessions->DestroySession(NAME_GameSession);
@@ -42,7 +42,7 @@ void ULOLGameInstance::CreateRoom(const FString& RoomName, int32 MaxPlayers)
 	SessionSettings = MakeShared<FOnlineSessionSettings>();
 	SessionSettings->NumPublicConnections = MaxPlayers;
 	SessionSettings->bShouldAdvertise = true;
-	SessionSettings->bIsLANMatch = true; // ¿Â¶óÀÎ ¼­ºê½Ã½ºÅÛÀÌ NullÀÏ ¶§ LAN ºê·ÎµåÄ³½ºÆ®·Î °Ë»ö °¡´É
+	SessionSettings->bIsLANMatch = true; // ï¿½Â¶ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½Ã½ï¿½ï¿½ï¿½ï¿½ï¿½ Nullï¿½ï¿½ ï¿½ï¿½ LAN ï¿½ï¿½Îµï¿½Ä³ï¿½ï¿½Æ®ï¿½ï¿½ ï¿½Ë»ï¿½ ï¿½ï¿½ï¿½ï¿½
 	SessionSettings->bUsesPresence = false;
 	SessionSettings->bAllowJoinInProgress = true;
 	SessionSettings->bAllowJoinViaPresence = false;
@@ -70,7 +70,7 @@ void ULOLGameInstance::OnCreateSessionComplete(FName SessionName, bool bWasSucce
 		return;
 	}
 
-	// ¹æÀåÀº ¸®½¼ ¼­¹ö·Î L_Lobby ·¹º§À» ¿­¾î ´ë±â½ÇÀ» ½ÃÀÛ
+	// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ L_Lobby ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 	UGameplayStatics::OpenLevel(this, FName(TEXT("Lobby")), true, TEXT("?listen"));
 }
 
@@ -117,7 +117,7 @@ void ULOLGameInstance::OnFindSessionsComplete(bool bWasSuccessful)
 		{
 			const FOnlineSessionSearchResult& Result = Results[i];
 
-			// ¼¼¼Ç¿¡¼­ ¹æ ÀÌ¸§ ²¨³»¿À±â
+			// ï¿½ï¿½ï¿½Ç¿ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½Ì¸ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 			FString RoomName;
 			Result.Session.SessionSettings.Get(RoomNameSettingsKey, RoomName);
 			if (RoomName.IsEmpty())
@@ -125,7 +125,7 @@ void ULOLGameInstance::OnFindSessionsComplete(bool bWasSuccessful)
 				RoomName = FString::Printf(TEXT("Room %d"), i + 1);
 			}
 
-			// ¼¼¼Ç¿¡¼­ È£½ºÆ® ÀÌ¸§ ²¨³»¿À±â
+			// ï¿½ï¿½ï¿½Ç¿ï¿½ï¿½ï¿½ È£ï¿½ï¿½Æ® ï¿½Ì¸ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 			FString HostNickname;
 			Result.Session.SessionSettings.Get(HostNicknameSettingsKey, HostNickname);
 			if (HostNickname.IsEmpty())
@@ -184,9 +184,26 @@ void ULOLGameInstance::OnJoinSessionComplete(FName SessionName, EOnJoinSessionCo
 	APlayerController* PC = GetFirstLocalPlayerController();
 	if (PC)
 	{
-		// ?Name= ¿É¼ÇÀ¸·Î Á¢¼ÓÇÏ¸é ¿£ÁøÀÌ ÀÚµ¿À¸·Î PlayerStateÀÇ PlayerNameÀ» Ã¤¿öÁÝ´Ï´Ù.
-		// (´Ð³×ÀÓ µ¿±âÈ­´Â LobbyPlayerController¿¡¼­ ÇÑ ¹ø ´õ ¼­¹ö·Î È®Á¤ÇÕ´Ï´Ù)
+		// ?Name= ï¿½É¼ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ï¸ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Úµï¿½ï¿½ï¿½ï¿½ï¿½ PlayerStateï¿½ï¿½ PlayerNameï¿½ï¿½ Ã¤ï¿½ï¿½ï¿½Ý´Ï´ï¿½.
+		// (ï¿½Ð³ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½È­ï¿½ï¿½ LobbyPlayerControllerï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ È®ï¿½ï¿½ï¿½Õ´Ï´ï¿½)
 		const FString TravelURL = FString::Printf(TEXT("%s?Name=%s"), *ConnectString, *UserNickname);
 		PC->ClientTravel(TravelURL, ETravelType::TRAVEL_Absolute);
 	}
+}
+
+bool ULOLGameInstance::GetCurrentRoomName(FString& OutRoomName) const
+{
+	IOnlineSessionPtr Sessions = GetSessionInterface();
+	if (!Sessions.IsValid())
+	{
+		return false;
+	}
+
+	FNamedOnlineSession* Session = Sessions->GetNamedSession(NAME_GameSession);
+	if (!Session)
+	{
+		return false;
+	}
+
+	return Session->SessionSettings.Get(RoomNameSettingsKey, OutRoomName) && !OutRoomName.IsEmpty();
 }

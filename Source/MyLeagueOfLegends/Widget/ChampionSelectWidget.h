@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
+#include "Types/SlateEnums.h"
 #include "ChampionSelectWidget.generated.h"
 
 class UWrapBox;
@@ -12,6 +13,8 @@ class UImage;
 class UTextBlock;
 class UChampionSlotWidget;
 class UDataTable;
+class UScrollBox;
+class UEditableTextBox;
 
 /**
  * 
@@ -45,6 +48,18 @@ protected:
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UTextBlock> RedPlayerNameText;
 
+	// Room chat UI. Optional so this widget still compiles/works before the
+	// Blueprint (WBP_ChampionSelect or similar) has these widgets added in
+	// the UMG designer with matching names.
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UScrollBox> ChatScrollBox;
+
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UEditableTextBox> ChatInputBox;
+
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UButton> ChatSendButton;
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Setup")
 	TObjectPtr<UDataTable> ChampionDataTable;
 
@@ -52,7 +67,7 @@ protected:
 	TSubclassOf<UChampionSlotWidget> ChampionSlotClass;
 
 public:
-	// PlayerStateµéÀÇ º¹Á¦ ¾Ë¸²À» ¹Þ¾Æ UI¸¦ ¸®ÇÁ·¹½ÃÇÒ ÄÝ¹é ÇÔ¼ö
+	// PlayerStateï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Ë¸ï¿½ï¿½ï¿½ ï¿½Þ¾ï¿½ UIï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ý¹ï¿½ ï¿½Ô¼ï¿½
 	UFUNCTION()
 	void RefreshSelectionUI();
 
@@ -65,9 +80,31 @@ private:
 	bool bEnemyBound = false;
 	bool bSelfBound = false;
 
-	// ÁÖ±âÀûÀ¸·Î PlayerState ¾ÈÂøÀ» °¨½ÃÇÒ Å¸ÀÌ¸Ó ÇÚµé
+	// ï¿½Ö±ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ PlayerState ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Å¸ï¿½Ì¸ï¿½ ï¿½Úµï¿½
 	FTimerHandle BindingTimerHandle;
 
-	// Å¸ÀÌ¸Ó°¡ È£ÃâÇÒ ¹ÙÀÎµù ÇÔ¼ö
+	// Å¸ï¿½Ì¸Ó°ï¿½ È£ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Îµï¿½ ï¿½Ô¼ï¿½
 	void TryBindPlayerStates();
+
+	// Room chat: joined once at NativeConstruct using the current OnlineSubsystem
+	// session's RoomName (see ULOLGameInstance::GetCurrentRoomName), left again at
+	// NativeDestruct.
+	FString CachedRoomName;
+
+	UFUNCTION()
+	void HandleChatJoinRoomResult(bool bSuccess, const FString& RoomName, const FString& ErrorMessage);
+
+	UFUNCTION()
+	void HandleChatMessageReceived(const FString& RoomName, const FString& Sender, const FString& Message, const FString& Timestamp);
+
+	UFUNCTION()
+	void HandleChatSystemMessage(const FString& RoomName, const FString& Message);
+
+	UFUNCTION()
+	void OnChatSendClicked();
+
+	UFUNCTION()
+	void OnChatInputCommitted(const FText& Text, ETextCommit::Type CommitMethod);
+
+	void AppendChatLine(const FString& Line);
 };

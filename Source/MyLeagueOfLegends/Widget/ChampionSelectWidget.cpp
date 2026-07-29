@@ -4,11 +4,16 @@
 #include "Components/Button.h"
 #include "Components/Image.h"
 #include "Components/TextBlock.h"
+#include "Components/ScrollBox.h"
+#include "Components/EditableTextBox.h"
+#include "Blueprint/WidgetTree.h"
 #include "Engine/DataTable.h"
 #include "ChampionSlotWidget.h"
 #include "InGame/LOLPlayerState.h"
 #include "ActorComponents/StatComponent.h"
 #include "GameFramework/GameStateBase.h"
+#include "GameInstance/LOLGameInstance.h"
+#include "Network/AuthClient.h"
 
 void UChampionSelectWidget::NativeConstruct()
 {
@@ -41,10 +46,56 @@ void UChampionSelectWidget::NativeConstruct()
     }
 
     RefreshSelectionUI();
+
+    // 방 채팅 UI 연결
+    if (ChatSendButton)
+    {
+        ChatSendButton->OnClicked.AddDynamic(this, &UChampionSelectWidget::OnChatSendClicked);
+    }
+    if (ChatInputBox)
+    {
+        ChatInputBox->OnTextCommitted.AddDynamic(this, &UChampionSelectWidget::OnChatInputCommitted);
+    }
+
+    if (UGameInstance* GI = GetGameInstance())
+    {
+        if (UAuthClient* Auth = GI->GetSubsystem<UAuthClient>())
+        {
+            Auth->OnChatJoinRoomResult.AddDynamic(this, &UChampionSelectWidget::HandleChatJoinRoomResult);
+            Auth->OnChatMessageReceived.AddDynamic(this, &UChampionSelectWidget::HandleChatMessageReceived);
+            Auth->OnChatSystemMessage.AddDynamic(this, &UChampionSelectWidget::HandleChatSystemMessage);
+
+            if (ULOLGameInstance* LOLGI = Cast<ULOLGameInstance>(GI))
+            {
+                FString RoomName;
+                if (LOLGI->GetCurrentRoomName(RoomName))
+                {
+                    CachedRoomName = RoomName;
+                    Auth->JoinChatRoom(CachedRoomName);
+                }
+            }
+        }
+    }
 }
 
 void UChampionSelectWidget::NativeDestruct()
 {
+    // 방 채팅 델리게이트 언바인딩 + 방 나가기
+    if (UGameInstance* GI = GetGameInstance())
+    {
+        if (UAuthClient* Auth = GI->GetSubsystem<UAuthClient>())
+        {
+            Auth->OnChatJoinRoomResult.RemoveDynamic(this, &UChampionSelectWidget::HandleChatJoinRoomResult);
+            Auth->OnChatMessageReceived.RemoveDynamic(this, &UChampionSelectWidget::HandleChatMessageReceived);
+            Auth->OnChatSystemMessage.RemoveDynamic(this, &UChampionSelectWidget::HandleChatSystemMessage);
+
+            if (!CachedRoomName.IsEmpty())
+            {
+                Auth->LeaveChatRoom(CachedRoomName);
+            }
+        }
+    }
+
     // 메모리 누수 방지를 위한 언바인딩
     /*if (APlayerController* PC = GetOwningPlayer())
     {
@@ -294,4 +345,69 @@ void UChampionSelectWidget::OnReadyClicked()
             ReadyButton->SetIsEnabled(false);
         }
     }
+}
+
+void UChampionSelectWidget::HandleChatJoinRoomResult(bool bSuccess, const FString& RoomName, const FString& ErrorMessage)
+{
+    if (RoomName != CachedRoomName) return;
+
+    if (!bSuccess)
+    {
+        AppendChatLine(FString::Printf(TEXT("[System] failed to join chat room: %s"), *ErrorMessage));
+    }
+}
+
+void UChampionSelectWidget::HandleChatMessageReceived(const FString& RoomName, const FString& Sender, const FString& Message, const FString& Timestamp)
+{
+    if (RoomName != CachedRoomName) return;
+
+    AppendChatLine(FString::Printf(TEXT("%s: %s"), *Sender, *Message));
+}
+
+void UChampionSelectWidget::HandleChatSystemMessage(const FString& RoomName, const FString& Message)
+{
+    if (RoomName != CachedRoomName) return;
+
+    AppendChatLine(FString::Printf(TEXT("[System] %s"), *Message));
+}
+
+void UChampionSelectWidget::OnChatSendClicked()
+{
+    if (!ChatInputBox || CachedRoomName.IsEmpty()) return;
+
+    const FString Text = ChatInputBox->GetText().ToString();
+    if (Text.IsEmpty()) return;
+
+    if (UGameInstance* GI = GetGameInstance())
+    {
+        if (UAuthClient* Auth = GI->GetSubsystem<UAuthClient>())
+        {
+            Auth->SendChatMessage(CachedRoomName, Text);
+        }
+    }
+
+    ChatInputBox->SetText(FText::GetEmpty());
+}
+
+void UChampionSelectWidget::OnChatInputCommitted(const FText& Text, ETextCommit::Type CommitMethod)
+{
+    if (CommitMethod == ETextCommit::OnEnter)
+    {
+        OnChatSendClicked();
+    }
+}
+
+void UChampionSelectWidget::AppendChatLine(const FString& Line)
+{
+    if (!ChatScrollBox || !WidgetTree) return;
+
+    // UTextBlock is a UWidget, not a UUserWidget -- CreateWidget<>() only
+    // constructs UUserWidget instances, so a plain leaf widget like this has
+    // to go through this UserWidget's own WidgetTree instead.
+    UTextBlock* TextBlock = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass());
+    if (!TextBlock) return;
+
+    TextBlock->SetText(FText::FromString(Line));
+    ChatScrollBox->AddChild(TextBlock);
+    ChatScrollBox->ScrollToEnd();
 }
