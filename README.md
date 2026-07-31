@@ -76,6 +76,18 @@ Niagara 이펙트 + `ProjectileMovementComponent` 조합으로 유도탄/논타�
 - **Tick 기반 공격 처리 구조 개선**: 공격 범위 체크와 공격 실행을 모두 Tick에서 처리하던 구조를, 거리 감지는 Tick·공격 실행은 `SetTimerByEvent` 기반 이벤트로 분리해 불필요한 프레임 단위 연산을 제거
 - **챔피언 선택 PlayerState 폴링 최적화**: 네트워크 지연으로 생성 시점이 보장되지 않는 상대 PlayerState를 매 프레임 Tick에서 탐색하던 구조를, `FTimerManager` 기반 0.2초 간격 폴링 + 완료 시 타이머 해제 구조로 개선해 CPU 낭비 제거
 
+### PlayerState 관련 이슈
+
+"서버에서는 정상인데 클라이언트에서만 골드와 상점이 이상하다"는 하나의 증상이, 실제로는 서로 다른 세 가지 원인이 겹친 것이었음. 리슨서버 호스트에서는 셋 다 드러나지 않아 클라이언트에서만 재현됐음.
+
+- **클라이언트가 남의 PlayerState를 참조하던 문제**: 상점/인벤토리 위젯이 `UGameplayStatics::GetPlayerState(0)`으로 PlayerState를 가져오고 있었음. 이 함수는 내부적으로 `GameState->PlayerArray`를 인덱싱하는데, 클라이언트에서 이 배열은 각 PlayerState 액터가 복제로 도착하는 순서대로 채워지므로 0번이 자기 자신이라는 보장이 없음. 호스트가 먼저 접속해 먼저 복제되는 탓에 클라이언트는 **호스트의 지갑을 표시하고 호스트의 `OnGoldChanged`에 바인딩**하고 있었음. 게다가 `GameState` 자체도 복제 액터라 위젯 `Construct` 시점에 아직 도착하지 않았으면 `nullptr`을 반환해 `Accessed None`이 발생. 반면 리슨서버 호스트는 GameMode가 `InitGame`에서 GameState를 직접 스폰하고 자신이 배열 0번이라 항상 정상 동작 → 서버만 멀쩡해 보이는 전형적인 패턴. 로컬 `PlayerController`의 `PlayerState`를 참조하도록 변경해 해결.
+  - `UUserWidget::GetOwningPlayerState`는 `UFUNCTION`이 아닌 **C++ 템플릿**이라 블루프린트 노드가 없음. `GetOwningPlayerPawn`, `GetOwningPlayerCameraManager`는 노출돼 있어 헷갈리기 쉬움. BP에서는 `Get Owning Player` → `Player State`(`AController`의 `BlueprintReadOnly` 프로퍼티) 조합으로 대체해야 함.
+  - `AController::PlayerState`는 `replicatedUsing = OnRep_PlayerState`라 클라이언트에서는 늦게 채워짐. 위젯 `Construct`가 이보다 먼저 실행되는 구간이 실제로 존재하므로(측정값 약 0.06초), `IsValid` 분기와 재시도 경로가 반드시 필요.
+
+- **시작 골드가 클라이언트에 복제되지 않던 문제**: `ALOLPlayerState` 생성자에서 `Gold = InitialGold`로 초기화하고 있었음. 생성자는 CDO에도 실행되므로 **CDO의 `Gold`도 같은 값**이 되는데, UE의 초기 복제는 클래스 기본값과 다른 프로퍼티만 최초 번치에 실어 보내기 때문에 `Gold`가 통째로 생략되어 클라이언트에서 `OnRep_Gold`가 한 번도 호출되지 않았음. 값이 우연히 일치해 겉으로는 정상처럼 보이지만, 블루프린트 디폴트로 `InitialGold`를 바꿔도 생성자가 이미 지나간 뒤라 반영되지 않는 문제가 함께 있었음. 지급 시점을 서버 전용 `PostInitializeComponents`로 옮겨 해결(`BeginPlay`는 UI가 먼저 값을 읽어 0을 보는 경우가 있어 더 이른 시점을 선택).
+
+- **골드 UI 갱신이 한 박자 늦던 문제**: `APlayerState`는 생성자에서 `SetNetUpdateFrequency(1)`, 즉 **초당 1회**로 설정됨. 이름·점수·핑처럼 거의 변하지 않는 데이터를 전제한 기본값이라, 여기에 골드를 얹으면 변경이 클라이언트에 최대 1초 늦게 도착함. 반면 인벤토리 `Slots`는 Pawn에 붙은 컴포넌트라 `ACharacter` 기본값(100Hz)으로 복제되어 **아이템은 즉시 뜨는데 골드 숫자만 뒤늦게 깎이는 비대칭**이 발생. `SetNetUpdateFrequency(10)`으로 상향하고 `SpendGold`/`AddGold`에서 `ForceNetUpdate()`를 호출해 구매·판매 순간에는 정기 주기를 기다리지 않도록 해결.
+
 ## 맵 구성
 
 `Login` → `MainMenu` / `Lobby` → `InGame` (Step01/Step02/Test는 레벨 프로토타이핑용)
