@@ -75,14 +75,27 @@ void ALOLGameMode::SpawnChampionForPlayer(APlayerController* InPC, ALOLPlayerSta
 
 AActor* ALOLGameMode::FindPlayerStartForTeam(ETeam Team)
 {
-	FString Tag = (Team == ETeam::Blue) ? TEXT("BlueStart") : TEXT("RedStart");
-	for (TActorIterator<APlayerStart> It(GetWorld()); It; ++It)
+	const FName Tag = (Team == ETeam::Blue) ? FName(TEXT("BlueStart")) : FName(TEXT("RedStart"));
+
+	// 1순위: 레벨에 배치한 팀 스폰 액터(BP_BlueSpawn / BP_RedSpawn) - 액터 태그로 검색
+	for (TActorIterator<AActor> It(GetWorld()); It; ++It)
 	{
-		if (It->PlayerStartTag == FName(*Tag))
+		if (It->ActorHasTag(Tag))
 		{
 			return *It;
 		}
 	}
+
+	// 2순위: PlayerStartTag 가 설정된 PlayerStart (기존 방식 폴백)
+	for (TActorIterator<APlayerStart> It(GetWorld()); It; ++It)
+	{
+		if (It->PlayerStartTag == Tag)
+		{
+			return *It;
+		}
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("FindPlayerStartForTeam: '%s' 스폰 지점을 찾지 못했습니다."), *Tag.ToString());
 	return nullptr;
 }
 

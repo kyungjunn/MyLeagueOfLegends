@@ -34,6 +34,7 @@ public:
 	ALOLPlayerState();
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+	virtual void PostInitializeComponents() override;
 
 	// 팀 설정
 	UFUNCTION(BlueprintCallable, Category = "Team")
@@ -77,6 +78,14 @@ public:
 
 	// 서버 전용: 골드 획득/환급
 	void AddGold(int32 Amount);
+
+	// 로컬 플레이어 자신의 LOLPlayerState 를 반환한다. UI 에서 사용.
+	// UserWidget::GetOwningPlayerState 는 C++ 템플릿이라 BP 노드가 없고,
+	// GameplayStatics::GetPlayerState(0) 은 클라이언트에서 GameState->PlayerArray 의
+	// 복제 도착 순서를 타므로 남의 PlayerState 를 돌려주거나 null 이 된다.
+	// 아직 복제 전이면 nullptr 이므로 호출부에서 IsValid 확인 필요.
+	UFUNCTION(BlueprintPure, Category = "LOL|PlayerState", meta = (WorldContext = "WorldContextObject", DisplayName = "Get Local LOL Player State"))
+	static ALOLPlayerState* GetLocalLOLPlayerState(const UObject* WorldContextObject);
 
 protected:
 	UPROPERTY(ReplicatedUsing = OnRep_Team, VisibleAnywhere, BlueprintReadOnly, Category = "Team")
