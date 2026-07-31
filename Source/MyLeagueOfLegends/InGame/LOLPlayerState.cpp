@@ -9,22 +9,6 @@
 #include "Engine/World.h"
 #include "Engine/Engine.h"
 #include "GameFramework/PlayerController.h"
-#include "GameFramework/GameStateBase.h"
-#include "EngineUtils.h"
-
-// [진단용] 원인 확정 후 제거할 것
-static const TCHAR* LOLNetModeToString(const UWorld* World)
-{
-	if (!World) { return TEXT("NoWorld"); }
-	switch (World->GetNetMode())
-	{
-	case NM_Standalone:      return TEXT("Standalone");
-	case NM_ListenServer:    return TEXT("ListenServer");
-	case NM_DedicatedServer: return TEXT("DedicatedServer");
-	case NM_Client:          return TEXT("Client");
-	default:                 return TEXT("?");
-	}
-}
 
 ALOLPlayerState::ALOLPlayerState()
 {
@@ -61,11 +45,6 @@ void ALOLPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutL
 void ALOLPlayerState::PostInitializeComponents()
 {
 	Super::PostInitializeComponents();
-
-	// [진단용] PlayerState 액터가 각 사이드에 언제 생기는지 추적. 원인 확정 후 제거할 것
-	UE_LOG(LogTemp, Warning, TEXT("[%s] LOLPlayerState::PostInitComp T=%.2f | Name=%s Class=%s HasAuth=%d Owner=%s"),
-		LOLNetModeToString(GetWorld()), GetWorld() ? GetWorld()->GetTimeSeconds() : -1.f,
-		*GetName(), *GetClass()->GetName(), HasAuthority() ? 1 : 0, *GetNameSafe(GetOwner()));
 
 	if (HasAuthority())
 	{
@@ -166,60 +145,16 @@ ALOLPlayerState* ALOLPlayerState::GetLocalLOLPlayerState(const UObject* WorldCon
 		return nullptr;
 	}
 
-	const TCHAR* NetModeStr = LOLNetModeToString(World);
-
 	// 클라이언트에는 로컬 컨트롤러가 하나뿐이고, 리슨서버 호스트에서는 호스트 자신이 잡힌다.
-	int32 PCCount = 0;
 	for (FConstPlayerControllerIterator It = World->GetPlayerControllerIterator(); It; ++It)
 	{
 		APlayerController* PC = It->Get();
-		if (!PC)
+		if (PC && PC->IsLocalController())
 		{
-			continue;
+			// 복제 전이면 nullptr. 호출부에서 IsValid 확인 후 재시도할 것.
+			return PC->GetPlayerState<ALOLPlayerState>();
 		}
-		++PCCount;
-
-		if (!PC->IsLocalController())
-		{
-			continue;
-		}
-
-		if (!PC->PlayerState)
-		{
-			// 클라 월드에 PlayerState 액터가 존재하는지 vs PC 와의 연결만 안 된 것인지 구분한다.
-			int32 PSActorCount = 0;
-			FString PSNames;
-			for (TActorIterator<APlayerState> PSIt(World); PSIt; ++PSIt)
-			{
-				++PSActorCount;
-				PSNames += FString::Printf(TEXT("%s(%s) "), *PSIt->GetName(), *PSIt->GetClass()->GetName());
-			}
-
-			AGameStateBase* GS = World->GetGameState();
-			UE_LOG(LogTemp, Warning,
-				TEXT("[%s] GetLocalLOLPlayerState FAIL T=%.2f | World=%s | PC=%s LocalRole=%d RemoteRole=%d IsLocalPC=%d HasNetConn=%d | GameState=%s PlayerArrayNum=%d | PlayerStateActorsInWorld=%d [%s]"),
-				NetModeStr,
-				World->GetTimeSeconds(),
-				*World->GetName(),
-				*PC->GetName(), (int32)PC->GetLocalRole(), (int32)PC->GetRemoteRole(),
-				PC->IsLocalPlayerController() ? 1 : 0, PC->GetNetConnection() ? 1 : 0,
-				GS ? *GS->GetName() : TEXT("NULL"), GS ? GS->PlayerArray.Num() : -1,
-				PSActorCount, *PSNames);
-			return nullptr;
-		}
-
-		ALOLPlayerState* PS = Cast<ALOLPlayerState>(PC->PlayerState);
-		if (PS)
-		{
-			UE_LOG(LogTemp, Warning, TEXT("[%s] GetLocalLOLPlayerState SUCCESS T=%.2f | PS=%s Gold=%d"), NetModeStr, World->GetTimeSeconds(), *PS->GetName(), PS->GetGold());
-		}
-		if (!PS)
-		{
-			UE_LOG(LogTemp, Error, TEXT("[%s] GetLocalLOLPlayerState: PlayerState 가 ALOLPlayerState 가 아님. 실제 클래스=%s"), NetModeStr, *PC->PlayerState->GetClass()->GetName());
-		}
-		return PS;
 	}
 
-	UE_LOG(LogTemp, Warning, TEXT("[%s] GetLocalLOLPlayerState: 로컬 PlayerController 를 못 찾음 (순회한 PC 수=%d)"), NetModeStr, PCCount);
 	return nullptr;
 }
